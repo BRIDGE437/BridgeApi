@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\BridgeApi.Application\BridgeApi.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Filters\" />
+    <Folder Include="Services\Caching\" />
+    <Folder Include="Services\Mailing\" />
+    <Folder Include="Services\Storage\" />
+  </ItemGroup>
+
+</Project>

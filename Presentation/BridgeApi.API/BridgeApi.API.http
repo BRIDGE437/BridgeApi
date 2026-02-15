@@ -1,0 +1,6 @@
+@BridgeApi.API_HostAddress = http://localhost:5141
+
+GET {{BridgeApi.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
