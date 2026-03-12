@@ -26,7 +26,7 @@ BridgeApi/
     └── BridgeApi.API (Controllers, Middlewares, API Endpoints)
 ```
 
-## 🛠 Getting Started
+## 🛠  Getting Started
 
 ### Prerequisites
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
