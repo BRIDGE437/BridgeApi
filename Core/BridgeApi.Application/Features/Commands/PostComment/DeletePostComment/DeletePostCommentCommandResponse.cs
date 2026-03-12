@@ -1,0 +1,3 @@
+namespace BridgeApi.Application.Features.Commands.PostComment.DeletePostComment;
+
+public record DeletePostCommentCommandResponse;

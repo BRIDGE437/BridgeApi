@@ -1,0 +1,3 @@
+namespace BridgeApi.Application.Features.Commands.UserProfile.DeleteUserProfile;
+
+public record DeleteUserProfileCommandResponse;
