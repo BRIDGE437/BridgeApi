@@ -8,6 +8,45 @@ x86/
 [Ll]og/
 [Ll]ogs/
 
+venv/
+.venv/
+__pycache__/
+node_modules/
+*.log
+.DS_Store
+
+*.user                                                                                                             
+*.suo                                                                                                              
+.vs/
++appsettings.Production.json                                                                                        
++appsettings.*.local.json                                                                                    
+                                                                                                                  
+# Python                                                                                                           
+__pycache__/                                                                                                       
+                                                                                                                
+                                                                                                                
+# Node                                                                                                             
+node_modules/                                                                                                      
++package-lock.json                                                                                                  
+.next/                                                                                                             
+                                                                                                                
+# IDE                                                                                                              
+                                                                                                                
+                                                                                                                  
+# Env                                                                                                              
+.env                                                                                                               
++*.env                                                                                                              
+*.env.local                                                                                                        
+                                                                                                                  
++# Data files                                                                                                       
++*.csv                                                                                                              
++output.txt                                                                                                         
+                                                                                                              
++# ChromaDB (replaced by pgvector)                                                                                  
++chroma_data/                                                                                                       
+                                                                                                              
+                                                                                                                 
+      
 # Visual Studio
 .vs/
 *.user
