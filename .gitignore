@@ -1,95 +1,71 @@
-# Build results
+# ── .NET ──
 [Dd]ebug/
 [Rr]elease/
-x64/
-x86/
 [Bb]in/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
-
-venv/
-.venv/
-__pycache__/
-node_modules/
-*.log
-.DS_Store
-
-*.user                                                                                                             
-*.suo                                                                                                              
-.vs/
-+appsettings.Production.json                                                                                        
-+appsettings.*.local.json                                                                                    
-                                                                                                                  
-# Python                                                                                                           
-__pycache__/                                                                                                       
-                                                                                                                
-                                                                                                                
-# Node                                                                                                             
-node_modules/                                                                                                      
-+package-lock.json                                                                                                  
-.next/                                                                                                             
-                                                                                                                
-# IDE                                                                                                              
-                                                                                                                
-                                                                                                                  
-# Env                                                                                                              
-.env                                                                                                               
-+*.env                                                                                                              
-*.env.local                                                                                                        
-                                                                                                                  
-+# Data files                                                                                                       
-+*.csv                                                                                                              
-+output.txt                                                                                                         
-                                                                                                              
-+# ChromaDB (replaced by pgvector)                                                                                  
-+chroma_data/                                                                                                       
-                                                                                                              
-                                                                                                                 
-      
-# Visual Studio
-.vs/
+x64/
+x86/
 *.user
+*.suo
 *.userosscache
 *.sln.docstates
+*.rsuser
+*.cache
+*.vspscc
+*.vssscc
+*.pidb
+*.svclog
+*.scc
+.vs/
+.builds
+artifacts/
+ScaffoldingReadMe.txt
+project.lock.json
+project.fragment.lock.json
 
 # NuGet
 *.nupkg
 *.snupkg
 **/packages/*
 !**/packages/build/
-project.lock.json
-project.fragment.lock.json
-artifacts/
 
-# User-specific
-*.rsuser
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
 
 # JetBrains Rider
 .idea/
 *.sln.iml
 
-# ASP.NET
-ScaffoldingReadMe.txt
+# ── Secrets / Environment ──
+.env
+*.env
+*.env.local
+appsettings.Development.json
+appsettings.Local.json
+appsettings.Production.json
+appsettings.*.local.json
 
-# Uploaded files
-wwwroot/uploads/
+# ── Python ──
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+venv/
+.venv/
 
-# Others
-*.cache
-*.log
-*.vspscc
-*.vssscc
-.builds
-*.pidb
-*.svclog
-*.scc
+# ── Node ──
+node_modules/
+package-lock.json
+.next/
 
-# OS-generated files
+# ── IDE ──
+.vscode/
+.idea/
+
+# ── OS ──
 .DS_Store
 .DS_Store?
 ._*
@@ -98,27 +74,24 @@ wwwroot/uploads/
 ehthumbs.db
 Thumbs.db
 
-# Test Results
-[Tt]est[Rr]esult*/
-[Bb]uild[Ll]og.*
+# ── Data / temp files ──
+*.csv
+output.txt
+logs/
+wwwroot/uploads/
 
-# Local Environment & Secrets
-.env
-appsettings.Local.json
-appsettings.Development.json
+# ── ChromaDB (replaced by pgvector) ──
+chroma_data/
 
-# Development tools & AI
-.claude/
-claude.json
-claude.md
-
-# Database files
+# ── Database files ──
 *.db
 *.sqlite
 *.sqlite3
 *.mdf
 *.ldf
 
-# Docker
+# ── Docker overrides ──
 docker-compose.override.yml
-.dockerignore
+
+# ── Claude ──
+.claude/
