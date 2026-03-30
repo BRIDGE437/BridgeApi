@@ -30,8 +30,13 @@ public class RuleBasedMatchingService
 
         _logger.LogInformation("Loaded {Count} alive startups for matching", startups.Count);
 
-        // ── Determine weights based on whether investor has a model preference ──
-        bool hasModelPref = investor.ParsedBusinessModels.Count > 0;
+        // ── Cache investor parsed fields once — avoid re-parsing in the hot loop ──
+        var investorRegions = investor.ParsedRegions;
+        var investorCities  = investor.ParsedCities;
+        var investorSectors = investor.ParsedSectors;
+        var investorModels  = investor.ParsedBusinessModels;
+
+        bool hasModelPref = investorModels.Count > 0;
 
         // With model pref:    Sector 40 + Geo 35 + Model 25 = 100
         // Without model pref: Sector 55 + Geo 45             = 100
@@ -47,30 +52,29 @@ public class RuleBasedMatchingService
 
             // ── Hard filter: region check ──
             var region = RegionMapper.GetRegion(country);
-            var investorRegions = investor.ParsedRegions;
             var hasRegionOverlap =
                 investorRegions.Any(r => r.Equals(country, StringComparison.OrdinalIgnoreCase)) ||
                 investorRegions.Any(r => r.Equals(region, StringComparison.OrdinalIgnoreCase)) ||
-                investor.ParsedCities.Any(c => c.Equals(city, StringComparison.OrdinalIgnoreCase)) ||
-                HasNearbyCity(city, investor.ParsedCities);
+                investorCities.Any(c => c.Equals(city, StringComparison.OrdinalIgnoreCase)) ||
+                HasNearbyCity(city, investorCities);
 
             if (!hasRegionOverlap && investorRegions.Count > 0)
                 continue;
 
             // ── 1. Sector Score (similarity-aware) ──
             double sectorScore = SectorSimilarity.CalculateSectorScore(
-                startup.ParsedTags, investor.ParsedSectors, maxSector);
+                startup.ParsedTags, investorSectors, maxSector);
 
             // ── 2. Geographic Score (proximity-aware) ──
             double geoScore = RegionMapper.CalculateGeoScore(
-                city, country, investor.ParsedCities, investor.ParsedRegions, maxGeo);
+                city, country, investorCities, investorRegions, maxGeo);
 
             // ── 3. Business Model Score (skip if investor has no preference) ──
             double modelScore = 0;
             if (hasModelPref)
             {
                 modelScore = CalculateBusinessModelScore(
-                    startup.ParsedBusinessModels, investor.ParsedBusinessModels, maxModel);
+                    startup.ParsedBusinessModels, investorModels, maxModel);
             }
 
             double total = sectorScore + geoScore + modelScore;
@@ -178,26 +182,47 @@ public class RuleBasedMatchingService
         return await _db.Startups.FromSqlRaw(sql, parameters).ToListAsync();
     }
 
-    // ── Persistence ──
+    // ── Persistence — upsert by (InvestorId, StartupId, MatchingMode) ──
     private async Task PersistResultsAsync(string investorId, string mode, List<MatchResultDto> results)
     {
-        var entities = results.Select(r => new MatchResult
-        {
-            InvestorId = investorId,
-            StartupId = r.StartupId,
-            MatchingMode = mode,
-            TotalScore = r.Score,
-            SectorScore = r.Breakdown.SectorScore,
-            GeoScore = r.Breakdown.GeoScore,
-            ModelScore = r.Breakdown.ModelScore,
-            StageScore = 0,
-            FundingBonus = 0,
-            SemanticScore = r.Breakdown.SemanticScore,
-            LlmBonus = r.Breakdown.LlmBonus,
-            AiReason = r.AiReason,
-        });
+        var startupIds = results.Select(r => r.StartupId).ToList();
+        var existing = await _db.MatchResults
+            .Where(m => m.InvestorId == investorId && m.MatchingMode == mode && startupIds.Contains(m.StartupId))
+            .ToDictionaryAsync(m => m.StartupId);
 
-        _db.MatchResults.AddRange(entities);
+        foreach (var r in results)
+        {
+            if (existing.TryGetValue(r.StartupId, out var row))
+            {
+                row.TotalScore = r.Score;
+                row.SectorScore = r.Breakdown.SectorScore;
+                row.GeoScore = r.Breakdown.GeoScore;
+                row.ModelScore = r.Breakdown.ModelScore;
+                row.SemanticScore = r.Breakdown.SemanticScore;
+                row.LlmBonus = r.Breakdown.LlmBonus;
+                row.AiReason = r.AiReason;
+                row.CreatedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                _db.MatchResults.Add(new MatchResult
+                {
+                    InvestorId = investorId,
+                    StartupId = r.StartupId,
+                    MatchingMode = mode,
+                    TotalScore = r.Score,
+                    SectorScore = r.Breakdown.SectorScore,
+                    GeoScore = r.Breakdown.GeoScore,
+                    ModelScore = r.Breakdown.ModelScore,
+                    StageScore = 0,
+                    FundingBonus = 0,
+                    SemanticScore = r.Breakdown.SemanticScore,
+                    LlmBonus = r.Breakdown.LlmBonus,
+                    AiReason = r.AiReason,
+                });
+            }
+        }
+
         await _db.SaveChangesAsync();
     }
 }

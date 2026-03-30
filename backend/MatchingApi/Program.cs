@@ -14,6 +14,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<RuleBasedMatchingService>();
 builder.Services.AddScoped<AiMatchingService>();
 builder.Services.AddScoped<CsvImportService>();
+builder.Services.AddScoped<StartupSimilarityService>();
 
 // ── HTTP Client for AI microservice ──
 builder.Services.AddHttpClient("AiService", client =>

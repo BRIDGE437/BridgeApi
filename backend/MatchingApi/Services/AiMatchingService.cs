@@ -172,23 +172,46 @@ public class AiMatchingService
 
     private async Task PersistResultsAsync(string investorId, List<MatchResultDto> results)
     {
-        var entities = results.Select(r => new MatchResult
-        {
-            InvestorId = investorId,
-            StartupId = r.StartupId,
-            MatchingMode = "ai-powered",
-            TotalScore = r.Score,
-            SectorScore = r.Breakdown.SectorScore,
-            GeoScore = r.Breakdown.GeoScore,
-            ModelScore = r.Breakdown.ModelScore,
-            StageScore = r.Breakdown.StageScore,
-            FundingBonus = r.Breakdown.FundingBonus,
-            SemanticScore = r.Breakdown.SemanticScore,
-            LlmBonus = r.Breakdown.LlmBonus,
-            AiReason = r.AiReason,
-        });
+        var startupIds = results.Select(r => r.StartupId).ToList();
+        var existing = await _db.MatchResults
+            .Where(m => m.InvestorId == investorId && m.MatchingMode == "ai-powered" && startupIds.Contains(m.StartupId))
+            .ToDictionaryAsync(m => m.StartupId);
 
-        _db.MatchResults.AddRange(entities);
+        foreach (var r in results)
+        {
+            if (existing.TryGetValue(r.StartupId, out var row))
+            {
+                row.TotalScore = r.Score;
+                row.SectorScore = r.Breakdown.SectorScore;
+                row.GeoScore = r.Breakdown.GeoScore;
+                row.ModelScore = r.Breakdown.ModelScore;
+                row.StageScore = r.Breakdown.StageScore;
+                row.FundingBonus = r.Breakdown.FundingBonus;
+                row.SemanticScore = r.Breakdown.SemanticScore;
+                row.LlmBonus = r.Breakdown.LlmBonus;
+                row.AiReason = r.AiReason;
+                row.CreatedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                _db.MatchResults.Add(new MatchResult
+                {
+                    InvestorId = investorId,
+                    StartupId = r.StartupId,
+                    MatchingMode = "ai-powered",
+                    TotalScore = r.Score,
+                    SectorScore = r.Breakdown.SectorScore,
+                    GeoScore = r.Breakdown.GeoScore,
+                    ModelScore = r.Breakdown.ModelScore,
+                    StageScore = r.Breakdown.StageScore,
+                    FundingBonus = r.Breakdown.FundingBonus,
+                    SemanticScore = r.Breakdown.SemanticScore,
+                    LlmBonus = r.Breakdown.LlmBonus,
+                    AiReason = r.AiReason,
+                });
+            }
+        }
+
         await _db.SaveChangesAsync();
     }
 }

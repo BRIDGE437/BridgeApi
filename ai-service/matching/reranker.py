@@ -41,11 +41,15 @@ class LlmReranker:
             logger.warning("No LLM_API_KEY set. LLM reranking will be unavailable.")
 
     async def rerank(
-        self, investor_text: str, startups: list[Any]
+        self,
+        investor_text: str,
+        startups: list[Any],
+        mode: str = "investor_startup",
     ) -> dict[int, dict[str, Any]]:
         """
         Score candidates using LLM, with PostgreSQL cache.
 
+        mode: "investor_startup" | "startup_similarity"
         Cache key: (investor_text MD5, startup_text MD5).
         Returns: { startup_id: { "score": float, "reason": str } }
         """
@@ -60,7 +64,7 @@ class LlmReranker:
         # ── Call LLM for cache misses only ──
         llm_results: dict[int, dict] = {}
         if misses:
-            prompt = self._build_prompt(investor_text, misses)
+            prompt = self._build_prompt(investor_text, misses, mode)
             if self.provider == "openai":
                 llm_results = await self._call_openai(prompt)
             elif self.provider == "anthropic":
@@ -117,16 +121,46 @@ class LlmReranker:
     async def _store_cache(
         self, investor_hash: str, startups: list[Any], results: dict[int, dict]
     ) -> None:
-        """Upsert LLM results into LlmScoreCache table."""
+        """
+        Upsert LLM results into LlmScoreCache table.
+
+        Stale cleanup:
+        - Per-row: deletes old entries for the same (InvestorTextHash, StartupId)
+          when StartupTextHash has changed (startup text was updated).
+        - Periodic: prunes entries older than 90 days to handle investor text changes
+          and general cache hygiene (runs 1% of the time to avoid overhead).
+        """
         if not self._pool or not results:
             return
 
+        import random
+
         try:
             async with self._pool.connection() as conn:
+                # Periodic TTL cleanup (1% chance per call)
+                if random.random() < 0.01:
+                    deleted = await conn.execute(
+                        'DELETE FROM "LlmScoreCache" WHERE "CreatedAt" < NOW() - INTERVAL \'90 days\''
+                    )
+                    logger.info("LLM cache TTL cleanup: removed stale rows")
+
                 for s in startups:
                     if s.id not in results:
                         continue
                     res = results[s.id]
+                    startup_hash = _md5(s.text)
+
+                    # Delete stale entry if startup text changed
+                    await conn.execute(
+                        """
+                        DELETE FROM "LlmScoreCache"
+                        WHERE "InvestorTextHash" = %s
+                          AND "StartupId" = %s
+                          AND "StartupTextHash" != %s
+                        """,
+                        (investor_hash, s.id, startup_hash),
+                    )
+
                     await conn.execute(
                         """
                         INSERT INTO "LlmScoreCache"
@@ -138,13 +172,8 @@ class LlmReranker:
                                       "Reason" = EXCLUDED."Reason",
                                       "CreatedAt" = NOW()
                         """,
-                        (
-                            investor_hash,
-                            s.id,
-                            _md5(s.text),
-                            float(res.get("score", 0)),
-                            res.get("reason", ""),
-                        ),
+                        (investor_hash, s.id, startup_hash,
+                         float(res.get("score", 0)), res.get("reason", "")),
                     )
             logger.debug("Stored %d LLM scores in cache", len(results))
         except Exception as exc:
@@ -152,14 +181,34 @@ class LlmReranker:
 
     # ── Prompt & API calls ───────────────────────────────────────────────
 
-    def _build_prompt(self, investor_text: str, startups: list[Any]) -> str:
+    def _build_prompt(self, reference_text: str, startups: list[Any], mode: str = "investor_startup") -> str:
         startup_lines = [f"ID: {s.id} | {s.text}" for s in startups]
         startups_block = "\n".join(startup_lines)
 
+        if mode == "startup_similarity":
+            return f"""You are an expert startup analyst evaluating business similarity.
+
+## Reference Startup
+{reference_text}
+
+## Candidate Startups
+{startups_block}
+
+## Task
+Rate each candidate startup 0-10 for how similar it is to the reference startup.
+Consider: same problem domain, overlapping technology stack, similar target market, comparable business model, and competitive/complementary positioning.
+
+Return ONLY valid JSON array (no markdown, no explanation outside JSON):
+[
+  {{"id": 12345, "score": 8, "reason": "Both target SME financial management with SaaS B2B model..."}},
+  ...
+]"""
+
+        # Default: investor_startup mode
         return f"""You are an expert startup-investor matchmaker.
 
 ## Investor Profile
-{investor_text}
+{reference_text}
 
 ## Candidate Startups
 {startups_block}

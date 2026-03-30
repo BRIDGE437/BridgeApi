@@ -109,3 +109,32 @@ public record ImportResultDto(
     int Skipped,
     List<string> Errors
 );
+
+public record StartupSimilarityResultDto(
+    int Rank,
+    int StartupId,
+    string StartupName,
+    double Score,
+    double SectorScore,
+    double GeoScore,
+    double ModelScore,
+    double SemanticScore,
+    double LlmBonus,
+    string? AiReason,
+    List<string> Tags,
+    string? HQ,
+    string? BusinessModel,
+    string? Description,
+    string? Stage,
+    string? Website
+);
+
+public record StartupSimilarityResponseDto(
+    int TargetStartupId,
+    string TargetStartupName,
+    int TotalCandidates,
+    List<StartupSimilarityResultDto> Results,
+    long ProcessingTimeMs,
+    bool SemanticUsed,
+    bool LlmUsed
+);

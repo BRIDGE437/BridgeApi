@@ -110,12 +110,12 @@ class VectorStore:
         try:
             async with self._pool.connection() as conn:
                 await register_vector_async(conn)
-                for sid, text, emb in zip(startup_ids, texts, embeddings):
-                    await conn.execute(
-                        'UPDATE "Startups" SET "Embedding" = %s, "EmbeddingHash" = %s '
-                        'WHERE "Id" = %s',
-                        (emb.tolist(), _md5(text), sid),
-                    )
+                await conn.executemany(
+                    'UPDATE "Startups" SET "Embedding" = %s, "EmbeddingHash" = %s '
+                    'WHERE "Id" = %s',
+                    [(emb.tolist(), _md5(text), sid)
+                     for sid, text, emb in zip(startup_ids, texts, embeddings)],
+                )
             logger.debug("Upserted %d embeddings into PostgreSQL", len(startup_ids))
         except Exception as exc:
             logger.error("pgvector upsert failed: %s", exc)

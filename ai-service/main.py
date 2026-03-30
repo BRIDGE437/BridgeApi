@@ -90,6 +90,7 @@ class SemanticMatchRequest(BaseModel):
     investor_text: str
     startups: list[StartupInput]
     use_llm: bool = False
+    mode: str = "investor_startup"  # "investor_startup" | "startup_similarity"
 
 
 class SemanticResultItem(BaseModel):
@@ -199,6 +200,7 @@ async def semantic_match(request: SemanticMatchRequest):
             llm_scores = await llm_reranker.rerank(
                 investor_text=request.investor_text,
                 startups=[s for s in request.startups if s.id in top_20_ids],
+                mode=request.mode,
             )
 
             for result in results:

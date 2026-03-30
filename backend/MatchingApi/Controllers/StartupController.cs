@@ -12,11 +12,13 @@ public class StartupController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly CsvImportService _importService;
+    private readonly StartupSimilarityService _similarityService;
 
-    public StartupController(AppDbContext db, CsvImportService importService)
+    public StartupController(AppDbContext db, CsvImportService importService, StartupSimilarityService similarityService)
     {
         _db = db;
         _importService = importService;
+        _similarityService = similarityService;
     }
 
     /// <summary>List startups with optional filtering and pagination.</summary>
@@ -103,6 +105,21 @@ public class StartupController : ControllerBase
             .ToList();
 
         return Ok(tags);
+    }
+
+    /// <summary>Find startups similar to the given startup.</summary>
+    [HttpGet("{id:int}/similar")]
+    public async Task<IActionResult> GetSimilar(int id, [FromQuery] int topN = 10)
+    {
+        try
+        {
+            var result = await _similarityService.FindSimilarAsync(id, topN);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
     }
 
     /// <summary>Get startup count stats.</summary>

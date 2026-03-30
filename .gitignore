@@ -1,97 +1,43 @@
-# ── .NET ──
-[Dd]ebug/
-[Rr]elease/
-[Bb]in/
-[Oo]bj/
-[Ll]og/
-[Ll]ogs/
-x64/
-x86/
+# .NET
+bin/
+obj/
 *.user
 *.suo
-*.userosscache
-*.sln.docstates
-*.rsuser
-*.cache
-*.vspscc
-*.vssscc
-*.pidb
-*.svclog
-*.scc
 .vs/
-.builds
-artifacts/
-ScaffoldingReadMe.txt
-project.lock.json
-project.fragment.lock.json
-
-# NuGet
-*.nupkg
-*.snupkg
-**/packages/*
-!**/packages/build/
-
-# Test results
-[Tt]est[Rr]esult*/
-[Bb]uild[Ll]og.*
-
-# JetBrains Rider
-.idea/
-*.sln.iml
-
-# ── Secrets / Environment ──
-.env
-*.env
-*.env.local
-appsettings.Development.json
-appsettings.Local.json
 appsettings.Production.json
 appsettings.*.local.json
 
-# ── Python ──
+# Python
 __pycache__/
 *.pyc
-*.pyo
-*.egg-info/
 venv/
 .venv/
+*.egg-info/
 
-# ── Node ──
+# Node
 node_modules/
 package-lock.json
 .next/
 
-# ── IDE ──
-.vscode/
+# IDE
 .idea/
+.vscode/
 
-# ── OS ──
+# OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
-# ── Data / temp files ──
+# Env
+.env
+*.env
+*.env.local
+
+# Data files
 *.csv
 output.txt
-logs/
-wwwroot/uploads/
 
-# ── ChromaDB (replaced by pgvector) ──
+# ChromaDB (replaced by pgvector)
 chroma_data/
 
-# ── Database files ──
-*.db
-*.sqlite
-*.sqlite3
-*.mdf
-*.ldf
-
-# ── Docker overrides ──
-docker-compose.override.yml
-
-# ── Claude ──
-.claude/
+# Claude
+.claude
