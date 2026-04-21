@@ -10,6 +10,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 import hashlib
 import logging
+import os
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -18,9 +19,11 @@ logger = logging.getLogger(__name__)
 class EmbeddingEngine:
     """Manages embedding model and provides encode/similarity operations."""
 
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
-        self.model_name = model_name
-        self._model = SentenceTransformer(model_name)
+    def __init__(self, model_name: str | None = None):
+        # We always use the static semantic model (all-MiniLM-L6-v2) for embeddings.
+        # Dynamic model switching is reserved exclusively for the LLM (Reranker).
+        self.model_name = model_name or os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+        self._model = SentenceTransformer(self.model_name)
         self.dimensions = self._model.get_sentence_embedding_dimension()
         self._cache: dict[str, np.ndarray] = {}
 
@@ -78,6 +81,10 @@ class EmbeddingEngine:
         """
         Compute cosine similarity between a query vector and candidate vectors.
         Since embeddings are normalized, dot product = cosine similarity.
+
+        NOTE: In production, similarity computation should be performed at the 
+        database level (SQL pgvector) via VectorStore.get_similarities_sql() 
+        for better performance and lower network overhead.
         """
         if not candidates:
             return np.array([])

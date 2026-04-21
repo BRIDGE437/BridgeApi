@@ -3,6 +3,7 @@ using System;
 using MatchingApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -12,9 +13,11 @@ using Pgvector;
 namespace MatchingApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260421114100_AddEventMatchingModels")]
+    partial class AddEventMatchingModels
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -393,61 +396,6 @@ namespace MatchingApi.Migrations
                     b.ToTable("Startups");
                 });
 
-            modelBuilder.Entity("MatchingApi.Models.StartupMatchResult", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("AiReason")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("EventId")
-                        .HasColumnType("integer");
-
-                    b.Property<double>("GeoScore")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("LlmBonus")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("SectorScore")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("SemanticScore")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("SourceStartupId")
-                        .HasColumnType("integer");
-
-                    b.Property<double>("StageScore")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("TargetStartupId")
-                        .HasColumnType("integer");
-
-                    b.Property<double>("TotalScore")
-                        .HasColumnType("double precision");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("EventId");
-
-                    b.HasIndex("TargetStartupId");
-
-                    b.HasIndex("SourceStartupId", "TargetStartupId");
-
-                    b.ToTable("StartupMatchResults");
-                });
-
             modelBuilder.Entity("MatchingApi.Models.EventParticipation", b =>
                 {
                     b.HasOne("MatchingApi.Models.MatchEvent", "Event")
@@ -483,32 +431,6 @@ namespace MatchingApi.Migrations
                     b.Navigation("Investor");
 
                     b.Navigation("Startup");
-                });
-
-            modelBuilder.Entity("MatchingApi.Models.StartupMatchResult", b =>
-                {
-                    b.HasOne("MatchingApi.Models.MatchEvent", "Event")
-                        .WithMany()
-                        .HasForeignKey("EventId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("MatchingApi.Models.Startup", "SourceStartup")
-                        .WithMany()
-                        .HasForeignKey("SourceStartupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MatchingApi.Models.Startup", "TargetStartup")
-                        .WithMany()
-                        .HasForeignKey("TargetStartupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Event");
-
-                    b.Navigation("SourceStartup");
-
-                    b.Navigation("TargetStartup");
                 });
 
             modelBuilder.Entity("MatchingApi.Models.MatchEvent", b =>

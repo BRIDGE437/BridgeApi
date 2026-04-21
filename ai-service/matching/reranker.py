@@ -4,7 +4,7 @@ LLM Reranker
 Optional module: sends top candidates to an LLM for detailed scoring
 and natural language explanations.
 
-Supports: OpenAI GPT-4o-mini (cheapest) or Anthropic Claude Sonnet.
+Supports: OpenAI GPT-4o-mini, Google Gemini (1.5-flash/pro), or Anthropic Claude.
 Configure via environment variables.
 
 LLM results are cached in the PostgreSQL LlmScoreCache table using
@@ -29,11 +29,12 @@ class LlmReranker:
     """Handles LLM-based reranking of startup candidates with PostgreSQL cache."""
 
     def __init__(self, pool: AsyncConnectionPool | None = None):
-        self.provider = os.getenv("LLM_PROVIDER", "openai")
+        self.provider = os.getenv("LLM_PROVIDER", "openai")  # openai, google, anthropic
         self.api_key = os.getenv("LLM_API_KEY", "")
         self.model = os.getenv(
             "LLM_MODEL",
-            "gpt-4o-mini" if self.provider == "openai" else "claude-sonnet-4-20250514",
+            "gpt-4o-mini" if self.provider == "openai" 
+            else ("gemini-1.5-flash" if self.provider == "google" else "claude-sonnet-4-20250514"),
         )
         self._pool = pool
 
@@ -69,6 +70,8 @@ class LlmReranker:
                 llm_results = await self._call_openai(prompt)
             elif self.provider == "anthropic":
                 llm_results = await self._call_anthropic(prompt)
+            elif self.provider == "google":
+                llm_results = await self._call_gemini(prompt)
             else:
                 raise ValueError(f"Unknown LLM provider: {self.provider}")
 
@@ -76,6 +79,49 @@ class LlmReranker:
             await self._store_cache(investor_hash, misses, llm_results)
 
         return {**cached, **llm_results}
+
+    async def rerank_by_ids(
+        self,
+        source_id: int,
+        target_ids: list[int],
+        mode: str = "startup_startup",
+    ) -> dict[int, dict[str, Any]]:
+        """
+        Specialized rerank that fetches source and target texts from DB first.
+        Used for B2B Networking where only IDs are provided.
+        """
+        if not self._pool:
+            return {}
+
+        async with self._pool.connection() as conn:
+            # 1. Fetch Source
+            source_row = await (await conn.execute(
+                'SELECT "Name", "Tags", "Description", "BusinessModel", "HQ" '
+                'FROM "Startups" WHERE "Id" = %s',
+                (source_id,)
+            )).fetchone()
+            
+            if not source_row:
+                return {}
+            
+            source_text = f"{source_row[0]}. {source_row[1] or ''}. {source_row[2] or ''}. {source_row[3] or ''}. {source_row[4] or ''}"
+
+            # 2. Fetch Targets
+            rows = await conn.execute(
+                'SELECT "Id", "Name", "Tags", "Description", "BusinessModel", "HQ" '
+                'FROM "Startups" WHERE "Id" = ANY(%s)',
+                (target_ids,)
+            )
+            
+            from collections import namedtuple
+            StartupStub = namedtuple("StartupStub", ["id", "text"])
+            target_stubs = []
+            
+            for row in await rows.fetchall():
+                text = f"{row[1]}. {row[2] or ''}. {row[3] or ''}. {row[4] or ''}. {row[5] or ''}"
+                target_stubs.append(StartupStub(id=row[0], text=text))
+
+        return await self.rerank(source_text, target_stubs, mode)
 
     # ── Cache helpers ────────────────────────────────────────────────────
 
@@ -204,6 +250,25 @@ Return ONLY valid JSON array (no markdown, no explanation outside JSON):
   ...
 ]"""
 
+        if mode == "startup_startup":
+            return f"""You are a B2B Networking Expert evaluating strategic partnerships.
+
+## Source Startup (Initiator)
+{reference_text}
+
+## Candidate Startups
+{startups_block}
+
+## Task
+Rate each candidate startup 0-10 on their potential to form a synergetic strategic partnership, client-vendor relationship, or joint venture with the Source Startup.
+Consider: complementary technologies, target market overlap, potential B2B service exchange, and shared mission.
+
+Return ONLY valid JSON array (no markdown, no explanation outside JSON):
+[
+  {{"id": 12345, "score": 8, "reason": "Excellent synergy: Candidate provides payment APIs needed by Source's E-commerce platform..."}},
+  ...
+]"""
+
         # Default: investor_startup mode
         return f"""You are an expert startup-investor matchmaker.
 
@@ -270,6 +335,26 @@ Return ONLY valid JSON array (no markdown, no explanation outside JSON):
 
         content = data["content"][0]["text"]
         return self._parse_llm_response(content)
+
+    async def _call_gemini(self, prompt: str) -> dict[int, dict]:
+        """Call Google Gemini API."""
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                url,
+                json={
+                    "contents": [{"parts": [{"text": prompt}]}]
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        try:
+            content = data["candidates"][0]["content"]["parts"][0]["text"]
+            return self._parse_llm_response(content)
+        except (KeyError, IndexError) as e:
+            logger.error(f"Gemini response parsing failed: {e}\nResponse: {data}")
+            return {}
 
     def _parse_llm_response(self, content: str) -> dict[int, dict]:
         """Parse LLM JSON response into { id: { score, reason } } dict."""

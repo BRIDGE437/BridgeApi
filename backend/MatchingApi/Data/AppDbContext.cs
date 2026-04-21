@@ -10,7 +10,10 @@ public class AppDbContext : DbContext
     public DbSet<Startup> Startups => Set<Startup>();
     public DbSet<Investor> Investors => Set<Investor>();
     public DbSet<MatchResult> MatchResults => Set<MatchResult>();
+    public DbSet<StartupMatchResult> StartupMatchResults => Set<StartupMatchResult>();
     public DbSet<LlmScoreCache> LlmScoreCache => Set<LlmScoreCache>();
+    public DbSet<MatchEvent> MatchEvents => Set<MatchEvent>();
+    public DbSet<EventParticipation> EventParticipations => Set<EventParticipation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -49,6 +52,46 @@ public class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.InvestorId)
                   .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Event)
+                  .WithMany(e => e.MatchResults)
+                  .HasForeignKey(e => e.EventId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ── StartupMatchResult ──
+        modelBuilder.Entity<StartupMatchResult>(entity =>
+        {
+            entity.HasIndex(e => new { e.SourceStartupId, e.TargetStartupId });
+            entity.HasIndex(e => e.CreatedAt);
+
+            entity.HasOne(e => e.SourceStartup)
+                  .WithMany()
+                  .HasForeignKey(e => e.SourceStartupId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.TargetStartup)
+                  .WithMany()
+                  .HasForeignKey(e => e.TargetStartupId)
+                  .OnDelete(DeleteBehavior.Cascade);
+                  
+            entity.HasOne(e => e.Event)
+                  .WithMany()
+                  .HasForeignKey(e => e.EventId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ── MatchEvent ──
+        modelBuilder.Entity<MatchEvent>(entity =>
+        {
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.ScheduledAt);
+        });
+
+        // ── EventParticipation ──
+        modelBuilder.Entity<EventParticipation>(entity =>
+        {
+            entity.HasIndex(e => new { e.EventId, e.ParticipantId, e.ParticipantType }).IsUnique();
         });
 
         // ── LlmScoreCache ──

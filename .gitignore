@@ -39,5 +39,9 @@ output.txt
 # ChromaDB (replaced by pgvector)
 chroma_data/
 
+# Project Documentation & Reports
+reports/
+raporlar/
+
 # Claude
 .claude

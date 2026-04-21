@@ -30,7 +30,12 @@ public class MatchResult
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    public int? EventId { get; set; }
+
     // Navigation
     public Startup? Startup { get; set; }
     public Investor? Investor { get; set; }
+    
+    [System.ComponentModel.DataAnnotations.Schema.ForeignKey(nameof(EventId))]
+    public MatchEvent? Event { get; set; }
 }

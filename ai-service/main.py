@@ -11,9 +11,19 @@ LLM result cache: PostgreSQL LlmScoreCache table.
 import logging
 import os
 import time
+import asyncio
+import sys
 from contextlib import asynccontextmanager
 
+# Windows-specific fix for psycopg pool async mode
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+
+# upload variables from .env file
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 from fastapi.middleware.cors import CORSMiddleware
 from psycopg_pool import AsyncConnectionPool
 from pydantic import BaseModel
@@ -41,11 +51,28 @@ async def lifespan(app: FastAPI):
     embedding_engine = EmbeddingEngine()
 
     logger.info("Connecting to PostgreSQL (pgvector)...")
-    db_url = os.getenv(
-        "PGVECTOR_DATABASE_URL",
-        "postgresql://postgres:postgres@localhost:5432/matching_db",
+
+    # First check .env file for cloud address, otherwise use local address
+    db_url = os.getenv("PGVECTOR_DATABASE_URL")
+    if not db_url:
+        db_url = "postgresql://postgres:postgres@localhost:5432/matching_db"
+        logger.warning(f"PGVECTOR_DATABASE_URL not found in .env, using default: {db_url}")
+        
+    # NeonDB connection pool settings
+    # blocks unusefull connection
+
+    db_pool = AsyncConnectionPool(
+        db_url, 
+        open=False,
+        max_idle=2,
+        max_lifetime=300,
+        kwargs={
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 5
+        }
     )
-    db_pool = AsyncConnectionPool(db_url, open=False)
     await db_pool.open()
 
     vector_store = VectorStore(
@@ -91,6 +118,12 @@ class SemanticMatchRequest(BaseModel):
     startups: list[StartupInput]
     use_llm: bool = False
     mode: str = "investor_startup"  # "investor_startup" | "startup_similarity"
+
+class StartupStartupMatchRequest(BaseModel):
+    source_startup_id: int
+    target_startup_ids: list[int]
+    use_llm: bool = False
+    mode: str = "startup_startup"
 
 
 class SemanticResultItem(BaseModel):
@@ -160,8 +193,8 @@ async def semantic_match(request: SemanticMatchRequest):
     startup_ids = [s.id for s in request.startups]
     startup_texts = [s.text for s in request.startups]
 
-    cached_embeddings, missing_ids = await vector_store.get_embeddings(startup_ids, startup_texts)
-
+    up_to_date_ids, missing_ids = await vector_store.get_embeddings_status(startup_ids, startup_texts)
+ 
     if missing_ids:
         missing_id_set = set(missing_ids)
         missing_startups = [s for s in request.startups if s.id in missing_id_set]
@@ -171,19 +204,18 @@ async def semantic_match(request: SemanticMatchRequest):
             [s.text for s in missing_startups],
             new_embeddings,
         )
-        for startup, emb in zip(missing_startups, new_embeddings):
-            cached_embeddings[startup.id] = emb
 
-    # Step 3: Restore original order
-    startup_embeddings = [cached_embeddings[sid] for sid in startup_ids]
+    # Step 3: Compute similarities directly in SQL (Highly Scalable)
+    similarities_dict = await vector_store.get_similarities_sql(
+        investor_embedding, 
+        startup_ids
+    )
 
-    # Step 4: Compute cosine similarities
-    similarities = embedding_engine.cosine_similarities(investor_embedding, startup_embeddings)
-
-    # Step 5: Build results
+    # Step 4: Build results
     results: list[SemanticResultItem] = []
-    for i, startup in enumerate(request.startups):
-        sim_score = float(similarities[i])
+    for startup in request.startups:
+        # Fallback to 0.0 if not found in SQL results (though they should be there)
+        sim_score = similarities_dict.get(startup.id, 0.0)
         results.append(
             SemanticResultItem(
                 startup_id=startup.id,
@@ -219,6 +251,67 @@ async def semantic_match(request: SemanticMatchRequest):
         processing_time_ms=elapsed_ms,
     )
 
+@app.post("/api/v1/semantic-match/startup-startup", response_model=SemanticMatchResponse)
+async def semantic_match_startup_startup(request: StartupStartupMatchRequest):
+    """
+    B2B Networking endpoint: match a source startup against multiple target startups.
+    Pulls the source embedding directly from PostgreSQL instead of encoding text.
+    """
+    start = time.time()
+
+    if not request.target_startup_ids:
+        raise HTTPException(status_code=400, detail="No target startups provided")
+
+    # 1. Retrieve source startup embedding from PostgreSQL directly
+    source_embedding = await vector_store.get_embedding(request.source_startup_id)
+    if source_embedding is None:
+        raise HTTPException(status_code=404, detail=f"Embedding for source startup {request.source_startup_id} not found")
+
+    # 2. Compute similarities directly in SQL
+    similarities_dict = await vector_store.get_similarities_sql(
+        source_embedding, 
+        request.target_startup_ids
+    )
+
+    # 3. Build results
+    results: list[SemanticResultItem] = []
+    for t_id in request.target_startup_ids:
+        sim_score = similarities_dict.get(t_id, 0.0)
+        results.append(
+            SemanticResultItem(
+                startup_id=t_id,
+                similarity_score=max(0.0, min(1.0, sim_score)),
+            )
+        )
+
+    # 3. Optional LLM reranking (top 20 only)
+    if request.use_llm:
+        try:
+            top_20 = sorted(results, key=lambda r: r.similarity_score, reverse=True)[:20]
+            top_20_ids = [r.startup_id for r in top_20]
+
+            llm_scores = await llm_reranker.rerank_by_ids(
+                source_id=request.source_startup_id,
+                target_ids=top_20_ids,
+                mode="startup_startup",
+            )
+
+            for result in results:
+                if result.startup_id in llm_scores:
+                    result.llm_score = llm_scores[result.startup_id]["score"]
+                    result.reason = llm_scores[result.startup_id]["reason"]
+
+        except Exception as e:
+            logger.warning(f"LLM reranking failed for B2B: {e}")
+
+    elapsed_ms = int((time.time() - start) * 1000)
+
+    return SemanticMatchResponse(
+        results=results,
+        model=embedding_engine.model_name,
+        processing_time_ms=elapsed_ms,
+    )
+
 
 @app.post("/api/v1/index-startups", response_model=IndexStartupsResponse)
 async def index_startups(request: IndexStartupsRequest):
@@ -234,8 +327,8 @@ async def index_startups(request: IndexStartupsRequest):
     startup_ids = [s.id for s in request.startups]
     startup_texts = [s.text for s in request.startups]
 
-    cached_embeddings, missing_ids = await vector_store.get_embeddings(startup_ids, startup_texts)
-    already_cached = len(cached_embeddings)
+    up_to_date_ids, missing_ids = await vector_store.get_embeddings_status(startup_ids, startup_texts)
+    already_cached = len(up_to_date_ids)
 
     if missing_ids:
         missing_id_set = set(missing_ids)
@@ -287,3 +380,17 @@ async def health():
         "model": embedding_engine.model_name if embedding_engine else "not loaded",
         "vector_store_embeddings": await vector_store.count() if vector_store else 0,
     }
+
+if __name__ == "__main__":
+    import uvicorn
+    import sys
+    import asyncio
+    
+    # Psycopg driver on windows causes event loop policy error 
+    # It will be skipped on linux server
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+
+
