@@ -1,85 +1,44 @@
-# Build results
-[Dd]ebug/
-[Rr]elease/
-x64/
-x86/
-[Bb]in/
-[Oo]bj/
-[Ll]og/
-[Ll]ogs/
-
-# Visual Studio
-.vs/
+# .NET
+bin/
+obj/
 *.user
-*.userosscache
-*.sln.docstates
-
-# NuGet
-*.nupkg
-*.snupkg
-**/packages/*
-!**/packages/build/
-project.lock.json
-project.fragment.lock.json
-artifacts/
-
-# User-specific
-*.rsuser
 *.suo
-*.user
-*.userosscache
-*.sln.docstates
+.vs/
+appsettings.Production.json
+appsettings.*.local.json
 
-# JetBrains Rider
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.egg-info/
+
+# Node
+node_modules/
+package-lock.json
+.next/
+
+# IDE
 .idea/
-*.sln.iml
+.vscode/
 
-# ASP.NET
-ScaffoldingReadMe.txt
-
-# Uploaded files
-wwwroot/uploads/
-
-# Others
-*.cache
-*.log
-*.vspscc
-*.vssscc
-.builds
-*.pidb
-*.svclog
-*.scc
-
-# OS-generated files
+# OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
-# Test Results
-[Tt]est[Rr]esult*/
-[Bb]uild[Ll]og.*
-
-# Local Environment & Secrets
+# Env
 .env
-appsettings.Local.json
-appsettings.Development.json
+*.env
+*.env.local
 
-# Development tools & AI
-.claude/
-claude.json
-claude.md
+# Data files
+*.csv
+output.txt
 
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-*.mdf
-*.ldf
+# ChromaDB (replaced by pgvector)
+chroma_data/
 
-# Docker
-docker-compose.override.yml
-.dockerignore
+
+# Claude
+.claude
