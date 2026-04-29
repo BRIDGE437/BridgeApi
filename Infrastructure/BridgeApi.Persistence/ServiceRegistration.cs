@@ -6,9 +6,13 @@ using BridgeApi.Application.Abstractions.Repositories.Message;
 using BridgeApi.Application.Abstractions.Repositories.Post;
 using BridgeApi.Application.Abstractions.Repositories.PostComment;
 using BridgeApi.Application.Abstractions.Repositories.PostLike;
+using BridgeApi.Application.Abstractions.Repositories.Notification;
 using BridgeApi.Application.Abstractions.Repositories.StoredFile;
 using BridgeApi.Application.Abstractions.Repositories.UserIntent;
 using BridgeApi.Application.Abstractions.Repositories.UserProfile;
+using BridgeApi.Application.Abstractions.Repositories.FounderProfile;
+using BridgeApi.Application.Abstractions.Repositories.InvestorProfile;
+using BridgeApi.Application.Abstractions.Repositories.TalentProfile;
 using BridgeApi.Application.Abstractions.Services;
 using BridgeApi.Persistence.Services.Auth;
 using BridgeApi.Persistence.Contexts;
@@ -21,9 +25,14 @@ using BridgeApi.Persistence.Repositories.Message;
 using BridgeApi.Persistence.Repositories.Post;
 using BridgeApi.Persistence.Repositories.PostComment;
 using BridgeApi.Persistence.Repositories.PostLike;
+using BridgeApi.Persistence.Repositories.Notification;
 using BridgeApi.Persistence.Repositories.StoredFile;
 using BridgeApi.Persistence.Repositories.UserIntent;
 using BridgeApi.Persistence.Repositories.UserProfile;
+using BridgeApi.Persistence.Repositories.FounderProfile;
+using BridgeApi.Persistence.Repositories.InvestorProfile;
+using BridgeApi.Persistence.Repositories.TalentProfile;
+using BridgeApi.Application.Dtos;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -55,10 +64,22 @@ public static class ServiceRegistration
         .AddEntityFrameworkStores<ApplicationDbContext>()
         .AddDefaultTokenProviders();
 
+        var resetLifetimeMinutes = configuration.GetValue("PasswordReset:TokenLifetimeMinutes", 15);
+        services.Configure<DataProtectionTokenProviderOptions>(o =>
+            o.TokenLifespan = TimeSpan.FromMinutes(resetLifetimeMinutes));
+
+        services.Configure<PasswordResetSettings>(configuration.GetSection("PasswordReset"));
+
         services.AddScoped<IAppUserReadRepository, AppUserReadRepository>();
         services.AddScoped<IAppUserWriteRepository, AppUserWriteRepository>();
         services.AddScoped<IUserProfileReadRepository, UserProfileReadRepository>();
         services.AddScoped<IUserProfileWriteRepository, UserProfileWriteRepository>();
+        services.AddScoped<IFounderProfileReadRepository, FounderProfileReadRepository>();
+        services.AddScoped<IFounderProfileWriteRepository, FounderProfileWriteRepository>();
+        services.AddScoped<IInvestorProfileReadRepository, InvestorProfileReadRepository>();
+        services.AddScoped<IInvestorProfileWriteRepository, InvestorProfileWriteRepository>();
+        services.AddScoped<ITalentProfileReadRepository, TalentProfileReadRepository>();
+        services.AddScoped<ITalentProfileWriteRepository, TalentProfileWriteRepository>();
         services.AddScoped<IIntentReadRepository, IntentReadRepository>();
         services.AddScoped<IIntentWriteRepository, IntentWriteRepository>();
         services.AddScoped<IConnectionReadRepository, ConnectionReadRepository>();
@@ -78,8 +99,11 @@ public static class ServiceRegistration
         services.AddScoped<IUserIntentWriteRepository, UserIntentWriteRepository>();
         services.AddScoped<IStoredFileReadRepository, StoredFileReadRepository>();
         services.AddScoped<IStoredFileWriteRepository, StoredFileWriteRepository>();
+        services.AddScoped<INotificationReadRepository, NotificationReadRepository>();
+        services.AddScoped<INotificationWriteRepository, NotificationWriteRepository>();
 
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IUserRoleService, Services.UserRoleService>();
 
         return services;
     }

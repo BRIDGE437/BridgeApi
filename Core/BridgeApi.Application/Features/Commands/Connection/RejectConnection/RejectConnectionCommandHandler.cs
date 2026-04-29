@@ -26,6 +26,9 @@ public class RejectConnectionCommandHandler : IRequestHandler<RejectConnectionCo
         if (connection == null)
             return null;
 
+        if (connection.ReceiverId != request.RequestingUserId)
+            throw new UnauthorizedAccessException("You do not have permission to reject this connection request.");
+
         connection.Status = 2; // Rejected
 
         await _connectionWriteRepository.UpdateAsync(connection);

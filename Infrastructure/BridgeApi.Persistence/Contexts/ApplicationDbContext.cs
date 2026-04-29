@@ -11,6 +11,9 @@ public class ApplicationDbContext : IdentityDbContext<AppUser, AppRole, string>
         : base(options) { }
 
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
+    public DbSet<FounderProfile> FounderProfiles => Set<FounderProfile>();
+    public DbSet<InvestorProfile> InvestorProfiles => Set<InvestorProfile>();
+    public DbSet<TalentProfile> TalentProfiles => Set<TalentProfile>();
     public DbSet<Intent> Intents => Set<Intent>();
     public DbSet<UserIntent> UserIntents => Set<UserIntent>();
     public DbSet<Connection> Connections => Set<Connection>();
@@ -20,6 +23,7 @@ public class ApplicationDbContext : IdentityDbContext<AppUser, AppRole, string>
     public DbSet<PostComment> PostComments => Set<PostComment>();
     public DbSet<Follow> Follows => Set<Follow>();
     public DbSet<StoredFile> StoredFiles => Set<StoredFile>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

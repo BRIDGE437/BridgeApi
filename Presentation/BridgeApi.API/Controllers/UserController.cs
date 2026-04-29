@@ -9,6 +9,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 
 namespace BridgeApi.API.Controllers;
 
@@ -75,7 +76,9 @@ public class UserController : ControllerBase
         [FromBody] UpdateUserCommandBody body,
         CancellationToken cancellationToken)
     {
-        var request = new UpdateUserCommandRequest(id, body.Username, body.Email, body.Role);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var isAdmin = User.IsInRole("Admin");
+        var request = new UpdateUserCommandRequest(id, body.Username, body.Email, body.Role, userId, isAdmin);
         var response = await _mediator.Send(request, cancellationToken);
         if (response == null)
             return NotFound();

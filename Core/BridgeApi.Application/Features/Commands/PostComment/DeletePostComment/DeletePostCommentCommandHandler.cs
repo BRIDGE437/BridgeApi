@@ -29,6 +29,9 @@ public class DeletePostCommentCommandHandler : IRequestHandler<DeletePostComment
         if (comment == null)
             return null;
 
+        if (comment.UserId != request.RequestingUserId && !request.IsAdmin)
+            throw new UnauthorizedAccessException("You do not have permission to delete this comment.");
+
         var postId = comment.PostId;
 
         var removed = await _postCommentWriteRepository.RemoveAsync(request.Id);

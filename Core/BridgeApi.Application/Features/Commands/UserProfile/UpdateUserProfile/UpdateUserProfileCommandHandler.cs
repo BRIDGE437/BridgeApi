@@ -25,9 +25,11 @@ public class UpdateUserProfileCommandHandler : IRequestHandler<UpdateUserProfile
         if (request.Name != null) profile.Name = request.Name;
         if (request.Surname != null) profile.Surname = request.Surname;
         if (request.Title != null) profile.Title = request.Title;
+        if (request.Headline != null) profile.Headline = request.Headline;
         if (request.Bio != null) profile.Bio = request.Bio;
         if (request.Location != null) profile.Location = request.Location;
         if (request.ProfileImage != null) profile.ProfileImage = request.ProfileImage;
+        if (request.CoverImage != null) profile.CoverImage = request.CoverImage;
         if (request.PhoneNumber != null) profile.PhoneNumber = request.PhoneNumber;
         if (request.LinkedInUrl != null) profile.LinkedInUrl = request.LinkedInUrl;
         if (request.GitHubUrl != null) profile.GitHubUrl = request.GitHubUrl;
@@ -42,9 +44,11 @@ public class UpdateUserProfileCommandHandler : IRequestHandler<UpdateUserProfile
             profile.Name,
             profile.Surname,
             profile.Title,
+            profile.Headline,
             profile.Bio,
             profile.Location,
             profile.ProfileImage,
+            profile.CoverImage,
             profile.PhoneNumber,
             profile.LinkedInUrl,
             profile.GitHubUrl,

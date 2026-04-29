@@ -23,6 +23,9 @@ public class UpdatePostCommandHandler : IRequestHandler<UpdatePostCommandRequest
         if (post == null)
             return null;
 
+        if (post.UserId != request.RequestingUserId && !request.IsAdmin)
+            throw new UnauthorizedAccessException("You do not have permission to update this post.");
+
         if (request.Content != null) post.Content = request.Content;
         if (request.ImageUrl != null) post.ImageUrl = request.ImageUrl;
 

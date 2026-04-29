@@ -28,6 +28,7 @@
     <ProjectReference Include="..\..\Core\BridgeApi.Domain\BridgeApi.Domain.csproj" />
     <ProjectReference Include="..\..\Infrastructure\BridgeApi.Infrastructure\BridgeApi.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Infrastructure\BridgeApi.Persistence\BridgeApi.Persistence.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\BridgeApi.RealtimeCommunication\BridgeApi.RealtimeCommunication.csproj" />
   </ItemGroup>
 
   <ItemGroup>
