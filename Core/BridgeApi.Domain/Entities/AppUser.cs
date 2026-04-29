@@ -22,4 +22,6 @@ public class AppUser : IdentityUser<string>
     public ICollection<PostComment> PostComments { get; set; } = new List<PostComment>();
     public ICollection<Follow> Followers { get; set; } = new List<Follow>();
     public ICollection<Follow> Following { get; set; } = new List<Follow>();
+    public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+    public ICollection<Notification> TriggeredNotifications { get; set; } = new List<Notification>();
 }

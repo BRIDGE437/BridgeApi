@@ -11,12 +11,18 @@ public static class RateLimitingConfiguration
 {
     public static IServiceCollection AddRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
+        var enabled = configuration.GetValue("RateLimiting:Enabled", true);
+        if (!enabled)
+            return services;
+
         var globalLimit = configuration.GetValue("RateLimiting:Global:PermitLimit", 100);
         var globalWindowSeconds = configuration.GetValue("RateLimiting:Global:WindowSeconds", 60);
         var authLimit = configuration.GetValue("RateLimiting:Auth:PermitLimit", 10);
         var authWindowSeconds = configuration.GetValue("RateLimiting:Auth:WindowSeconds", 60);
         var userApiLimit = configuration.GetValue("RateLimiting:UserApi:PermitLimit", 30);
         var userApiWindowSeconds = configuration.GetValue("RateLimiting:UserApi:WindowSeconds", 60);
+        var passwordResetLimit = configuration.GetValue("RateLimiting:PasswordReset:PermitLimit", 5);
+        var passwordResetWindowSeconds = configuration.GetValue("RateLimiting:PasswordReset:WindowSeconds", 3600);
 
         services.AddRateLimiter(options =>
         {
@@ -68,6 +74,21 @@ public static class RateLimitingConfiguration
                 {
                     PermitLimit = authLimit,
                     Window = TimeSpan.FromSeconds(authWindowSeconds),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0
+                });
+            });
+
+            // Katman 2b: Password-reset policy (IP-based, sliding window, very strict)
+            options.AddPolicy("password-reset", httpContext =>
+            {
+                var remoteIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+                return RateLimitPartition.GetSlidingWindowLimiter($"pwreset_{remoteIp}", _ => new SlidingWindowRateLimiterOptions
+                {
+                    PermitLimit = passwordResetLimit,
+                    Window = TimeSpan.FromSeconds(passwordResetWindowSeconds),
+                    SegmentsPerWindow = 6,
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                     QueueLimit = 0
                 });
