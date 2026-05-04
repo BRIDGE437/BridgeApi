@@ -202,6 +202,83 @@ namespace BridgeApi.Persistence.Migrations
                     b.ToTable("Follows");
                 });
 
+            modelBuilder.Entity("BridgeApi.Domain.Entities.FounderProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("FoundedYear")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("FundingNeedUsd")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<bool>("IsActivelyFundraising")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("OneLiner")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("PitchDeckUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("PrimarySector")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ProblemStatement")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int[]>("SecondarySectors")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
+                    b.Property<int>("Stage")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StartupName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("StartupWebsite")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("TeamSize")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserProfileId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActivelyFundraising");
+
+                    b.HasIndex("PrimarySector");
+
+                    b.HasIndex("Stage");
+
+                    b.HasIndex("UserProfileId")
+                        .IsUnique();
+
+                    b.ToTable("FounderProfiles");
+                });
+
             modelBuilder.Entity("BridgeApi.Domain.Entities.Intent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -227,6 +304,69 @@ namespace BridgeApi.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Intents");
+                });
+
+            modelBuilder.Entity("BridgeApi.Domain.Entities.InvestorProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CheckSizeMaxUsd")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("CheckSizeMinUsd")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FirmName")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("FirmWebsite")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("InvestmentThesis")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("IsAcceptingPitches")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("PortfolioCompanyCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string[]>("PreferredGeographies")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<int[]>("PreferredSectors")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
+                    b.Property<int[]>("PreferredStages")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserProfileId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsAcceptingPitches");
+
+                    b.HasIndex("UserProfileId")
+                        .IsUnique();
+
+                    b.ToTable("InvestorProfiles");
                 });
 
             modelBuilder.Entity("BridgeApi.Domain.Entities.Message", b =>
@@ -262,6 +402,50 @@ namespace BridgeApi.Persistence.Migrations
                     b.HasIndex("SenderId");
 
                     b.ToTable("Messages");
+                });
+
+            modelBuilder.Entity("BridgeApi.Domain.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActorId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("ReferenceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.HasIndex("UserId", "IsRead");
+
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("BridgeApi.Domain.Entities.Post", b =>
@@ -421,6 +605,72 @@ namespace BridgeApi.Persistence.Migrations
                     b.ToTable("StoredFiles");
                 });
 
+            modelBuilder.Entity("BridgeApi.Domain.Entities.TalentProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AvailableFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CurrentCompany")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("CurrentRole")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<decimal?>("ExpectedSalaryMonthlyUsd")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Headline")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int[]>("InterestedSectors")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
+                    b.Property<int[]>("LookingFor")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
+                    b.Property<bool>("OpenToWork")
+                        .HasColumnType("boolean");
+
+                    b.Property<string[]>("Skills")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserProfileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("WorkPreference")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("YearsOfExperience")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OpenToWork");
+
+                    b.HasIndex("UserProfileId")
+                        .IsUnique();
+
+                    b.ToTable("TalentProfiles");
+                });
+
             modelBuilder.Entity("BridgeApi.Domain.Entities.UserIntent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -457,34 +707,54 @@ namespace BridgeApi.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Bio")
-                        .HasColumnType("text");
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("CoverImage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("GitHubUrl")
-                        .HasColumnType("text");
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Headline")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("LinkedInUrl")
-                        .HasColumnType("text");
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("Location")
-                        .HasColumnType("text");
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
 
                     b.Property<string>("Name")
-                        .HasColumnType("text");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("OnboardingCompletedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("text");
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
 
                     b.Property<string>("ProfileImage")
-                        .HasColumnType("text");
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("Surname")
-                        .HasColumnType("text");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Title")
-                        .HasColumnType("text");
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -494,7 +764,8 @@ namespace BridgeApi.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("WebsiteUrl")
-                        .HasColumnType("text");
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.HasKey("Id");
 
@@ -796,6 +1067,28 @@ namespace BridgeApi.Persistence.Migrations
                     b.Navigation("Following");
                 });
 
+            modelBuilder.Entity("BridgeApi.Domain.Entities.FounderProfile", b =>
+                {
+                    b.HasOne("BridgeApi.Domain.Entities.UserProfile", "UserProfile")
+                        .WithOne("FounderProfile")
+                        .HasForeignKey("BridgeApi.Domain.Entities.FounderProfile", "UserProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("UserProfile");
+                });
+
+            modelBuilder.Entity("BridgeApi.Domain.Entities.InvestorProfile", b =>
+                {
+                    b.HasOne("BridgeApi.Domain.Entities.UserProfile", "UserProfile")
+                        .WithOne("InvestorProfile")
+                        .HasForeignKey("BridgeApi.Domain.Entities.InvestorProfile", "UserProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("UserProfile");
+                });
+
             modelBuilder.Entity("BridgeApi.Domain.Entities.Message", b =>
                 {
                     b.HasOne("BridgeApi.Domain.Entities.Connection", "Connection")
@@ -813,6 +1106,25 @@ namespace BridgeApi.Persistence.Migrations
                     b.Navigation("Connection");
 
                     b.Navigation("Sender");
+                });
+
+            modelBuilder.Entity("BridgeApi.Domain.Entities.Notification", b =>
+                {
+                    b.HasOne("BridgeApi.Domain.Entities.AppUser", "Actor")
+                        .WithMany("TriggeredNotifications")
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BridgeApi.Domain.Entities.AppUser", "User")
+                        .WithMany("Notifications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("BridgeApi.Domain.Entities.Post", b =>
@@ -873,6 +1185,17 @@ namespace BridgeApi.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("UploadedByUser");
+                });
+
+            modelBuilder.Entity("BridgeApi.Domain.Entities.TalentProfile", b =>
+                {
+                    b.HasOne("BridgeApi.Domain.Entities.UserProfile", "UserProfile")
+                        .WithOne("TalentProfile")
+                        .HasForeignKey("BridgeApi.Domain.Entities.TalentProfile", "UserProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("UserProfile");
                 });
 
             modelBuilder.Entity("BridgeApi.Domain.Entities.UserIntent", b =>
@@ -984,6 +1307,8 @@ namespace BridgeApi.Persistence.Migrations
 
                     b.Navigation("Messages");
 
+                    b.Navigation("Notifications");
+
                     b.Navigation("PostComments");
 
                     b.Navigation("PostLikes");
@@ -995,6 +1320,7 @@ namespace BridgeApi.Persistence.Migrations
                     b.Navigation("SentConnections");
 
                     b.Navigation("StartupProfile");
+                    b.Navigation("TriggeredNotifications");
 
                     b.Navigation("UserIntents");
 
@@ -1018,6 +1344,15 @@ namespace BridgeApi.Persistence.Migrations
                     b.Navigation("PostComments");
 
                     b.Navigation("PostLikes");
+                });
+
+            modelBuilder.Entity("BridgeApi.Domain.Entities.UserProfile", b =>
+                {
+                    b.Navigation("FounderProfile");
+
+                    b.Navigation("InvestorProfile");
+
+                    b.Navigation("TalentProfile");
                 });
 #pragma warning restore 612, 618
         }

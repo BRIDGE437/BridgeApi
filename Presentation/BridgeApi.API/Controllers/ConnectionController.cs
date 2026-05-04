@@ -11,6 +11,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 
 namespace BridgeApi.API.Controllers;
 
@@ -92,7 +93,8 @@ public class ConnectionController : ControllerBase
     [HttpPut("{id:guid}/accept")]
     public async Task<ActionResult<AcceptConnectionCommandResponse>> Accept(Guid id, CancellationToken cancellationToken)
     {
-        var response = await _mediator.Send(new AcceptConnectionCommandRequest(id), cancellationToken);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var response = await _mediator.Send(new AcceptConnectionCommandRequest(id, userId), cancellationToken);
         if (response == null)
             return NotFound();
         return Ok(response);
@@ -101,7 +103,8 @@ public class ConnectionController : ControllerBase
     [HttpPut("{id:guid}/reject")]
     public async Task<ActionResult<RejectConnectionCommandResponse>> Reject(Guid id, CancellationToken cancellationToken)
     {
-        var response = await _mediator.Send(new RejectConnectionCommandRequest(id), cancellationToken);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var response = await _mediator.Send(new RejectConnectionCommandRequest(id, userId), cancellationToken);
         if (response == null)
             return NotFound();
         return Ok(response);

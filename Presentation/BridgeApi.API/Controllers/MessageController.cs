@@ -7,6 +7,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 
 namespace BridgeApi.API.Controllers;
 
@@ -60,7 +61,9 @@ public class MessageController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var response = await _mediator.Send(new DeleteMessageCommandRequest(id), cancellationToken);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var isAdmin = User.IsInRole("Admin");
+        var response = await _mediator.Send(new DeleteMessageCommandRequest(id, userId, isAdmin), cancellationToken);
         if (response == null)
             return NotFound();
         return NoContent();

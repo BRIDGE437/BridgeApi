@@ -25,6 +25,9 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommandRequest
         if (user == null)
             return null;
 
+        if (user.Id != request.RequestingUserId && !request.IsAdmin)
+            throw new UnauthorizedAccessException("You do not have permission to update this user.");
+
         if (request.Username != null)
             user.UserName = request.Username;
         if (request.Email != null)

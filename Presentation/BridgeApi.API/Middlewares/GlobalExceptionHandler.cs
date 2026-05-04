@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Mime;
 using System.Text.Json;
 using AuthenticationException = BridgeApi.Application.Exceptions.AuthenticationException;
+using NotFoundException = BridgeApi.Application.Exceptions.NotFoundException;
 
 namespace BridgeApi.API.Middlewares;
 
@@ -64,6 +65,20 @@ public class GlobalExceptionHandler : IExceptionHandler
             await httpContext.Response.WriteAsync(
                 JsonSerializer.Serialize(response),
                 cancellationToken);
+
+            return true;
+        }
+
+        if (exception is NotFoundException notFoundException)
+        {
+            _logger.LogWarning(notFoundException, "Resource not found for {Path}: {Message}", httpContext.Request.Path, notFoundException.Message);
+
+            var notFoundResponse = new BadRequestErrorResponse(notFoundException.Message);
+
+            httpContext.Response.StatusCode = (int)HttpStatusCode.NotFound;
+            httpContext.Response.ContentType = MediaTypeNames.Application.Json;
+
+            await httpContext.Response.WriteAsync(JsonSerializer.Serialize(notFoundResponse), cancellationToken);
 
             return true;
         }

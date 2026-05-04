@@ -1,10 +1,15 @@
+using BridgeApi.Application.Features.Commands.Auth.ChangePassword;
+using BridgeApi.Application.Features.Commands.Auth.ForgotPassword;
 using BridgeApi.Application.Features.Commands.Auth.Login;
 using BridgeApi.Application.Features.Commands.Auth.RefreshToken;
 using BridgeApi.Application.Features.Commands.Auth.Register;
 using BridgeApi.Application.Features.Commands.Auth.GoogleLogin;
+using BridgeApi.Application.Features.Commands.Auth.ResetPassword;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 
 namespace BridgeApi.API.Controllers;
 
@@ -49,6 +54,26 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("forgot-password")]
+    [EnableRateLimiting("password-reset")]
+    public async Task<ActionResult<ForgotPasswordCommandResponse>> ForgotPassword(
+        [FromBody] ForgotPasswordCommandRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator.Send(request, cancellationToken);
+        return Ok(response);
+    }
+
+    [HttpPost("reset-password")]
+    [EnableRateLimiting("password-reset")]
+    public async Task<ActionResult<ResetPasswordCommandResponse>> ResetPassword(
+        [FromBody] ResetPasswordCommandRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator.Send(request, cancellationToken);
+        return response.Success ? Ok(response) : BadRequest(response);
+    }
+
     [HttpPost("refresh-token")]
     public async Task<ActionResult<RefreshTokenCommandResponse>> RefreshToken(
         [FromBody] RefreshTokenCommandRequest request,
@@ -56,6 +81,18 @@ public class AuthController : ControllerBase
     {
         var response = await _mediator.Send(request, cancellationToken);
         return Ok(response);
+    }
+
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<ActionResult<ChangePasswordCommandResponse>> ChangePassword(
+        [FromBody] ChangePasswordCommandBody body,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var request = new ChangePasswordCommandRequest(userId, body.CurrentPassword, body.NewPassword);
+        var response = await _mediator.Send(request, cancellationToken);
+        return response.Success ? Ok(response) : BadRequest(response);
     }
 
     /// <summary>

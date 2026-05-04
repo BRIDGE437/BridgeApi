@@ -23,6 +23,7 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommandRequest
     {
         var user = new AppUser
         {
+            Id = Guid.NewGuid().ToString(),
             UserName = request.Username,
             Email = request.Email
         };

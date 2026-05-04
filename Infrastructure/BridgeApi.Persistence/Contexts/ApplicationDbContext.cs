@@ -24,6 +24,7 @@ public class ApplicationDbContext : IdentityDbContext<AppUser, AppRole, string>,
     public DbSet<PostComment> PostComments => Set<PostComment>();
     public DbSet<Follow> Follows => Set<Follow>();
     public DbSet<StoredFile> StoredFiles => Set<StoredFile>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

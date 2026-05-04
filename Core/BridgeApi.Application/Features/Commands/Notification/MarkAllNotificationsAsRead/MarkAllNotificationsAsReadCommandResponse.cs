@@ -1,0 +1,3 @@
+namespace BridgeApi.Application.Features.Commands.Notification.MarkAllNotificationsAsRead;
+
+public record MarkAllNotificationsAsReadCommandResponse(int UpdatedCount);

@@ -7,4 +7,6 @@ public record UpdateUserCommandRequest(
     string Id,
     string? Username,
     string? Email,
-    UserRole? Role) : IRequest<UpdateUserCommandResponse>;
+    UserRole? Role,
+    string RequestingUserId,
+    bool IsAdmin) : IRequest<UpdateUserCommandResponse>;

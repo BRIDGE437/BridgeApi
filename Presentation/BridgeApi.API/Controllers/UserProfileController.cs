@@ -3,12 +3,15 @@ using BridgeApi.Application.Features.Commands.UserProfile.CreateUserProfile;
 using BridgeApi.Application.Features.Commands.UserProfile.DeleteUserProfile;
 using BridgeApi.Application.Features.Commands.UserProfile.UpdateUserProfile;
 using BridgeApi.Application.Features.Queries.UserProfile.GetAllUserProfiles;
+using BridgeApi.Application.Features.Queries.UserProfile.GetMyFullProfile;
+using BridgeApi.Application.Features.Queries.UserProfile.GetProfileCompletion;
 using BridgeApi.Application.Features.Queries.UserProfile.GetUserProfileById;
 using BridgeApi.Application.Features.Queries.UserProfile.GetUserProfileByUserId;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 
 namespace BridgeApi.API.Controllers;
 
@@ -34,6 +37,23 @@ public class UserProfileController : ControllerBase
         var response = await _mediator.Send(
             new GetAllUserProfilesQueryRequest(new PaginationRequest(page, size)),
             cancellationToken);
+        return Ok(response);
+    }
+
+    [HttpGet("me")]
+    public async Task<ActionResult<GetUserProfileByUserIdQueryResponse>> GetMyFullProfile(CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var response = await _mediator.Send(new GetMyFullProfileQueryRequest(userId), cancellationToken);
+        if (response == null) return NotFound();
+        return Ok(response);
+    }
+
+    [HttpGet("me/completion")]
+    public async Task<ActionResult<GetProfileCompletionQueryResponse>> GetMyCompletion(CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var response = await _mediator.Send(new GetProfileCompletionQueryRequest(userId), cancellationToken);
         return Ok(response);
     }
 
@@ -78,9 +98,11 @@ public class UserProfileController : ControllerBase
             body.Name,
             body.Surname,
             body.Title,
+            body.Headline,
             body.Bio,
             body.Location,
             body.ProfileImage,
+            body.CoverImage,
             body.PhoneNumber,
             body.LinkedInUrl,
             body.GitHubUrl,

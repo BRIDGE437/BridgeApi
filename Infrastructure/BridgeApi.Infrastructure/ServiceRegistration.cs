@@ -1,9 +1,11 @@
+using System.Threading.Channels;
 using Amazon;
 using Amazon.S3;
 using BridgeApi.Application.Abstractions.Services;
 using BridgeApi.Application.Dtos;
 using BridgeApi.Infrastructure.Configuration;
 using BridgeApi.Infrastructure.Services.Caching;
+using BridgeApi.Infrastructure.Services.Mailing;
 using BridgeApi.Infrastructure.Services.Storage;
 using BridgeApi.Infrastructure.Services.Token;
 using Microsoft.Extensions.Configuration;
@@ -25,6 +27,8 @@ public static class ServiceRegistration
             options.InstanceName = configuration["Redis:InstanceName"];
         });
         services.AddSingleton<ICacheService, RedisCacheService>();
+
+        services.AddMailing(configuration);
 
         return services;
     }
@@ -50,6 +54,26 @@ public static class ServiceRegistration
             services.Configure<LocalStorageSettings>(configuration.GetSection("Storage:Local"));
             services.AddScoped<IStorageService, LocalStorageService>();
         }
+
+        return services;
+    }
+
+    private static IServiceCollection AddMailing(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<EmailOptions>(configuration.GetSection("Email"));
+
+        var channel = Channel.CreateBounded<EmailEnvelope>(new BoundedChannelOptions(1000)
+        {
+            FullMode = BoundedChannelFullMode.Wait,
+            SingleReader = true,
+            SingleWriter = false
+        });
+        services.AddSingleton(channel);
+
+        services.AddSingleton<IEmailTemplateRenderer, ScribanEmailTemplateRenderer>();
+        services.AddSingleton<IEmailSender, SmtpEmailSender>();
+        services.AddSingleton<IEmailService, EmailDispatcher>();
+        services.AddHostedService<EmailBackgroundQueue>();
 
         return services;
     }

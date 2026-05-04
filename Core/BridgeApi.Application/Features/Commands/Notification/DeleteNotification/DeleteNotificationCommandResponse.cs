@@ -1,0 +1,3 @@
+namespace BridgeApi.Application.Features.Commands.Notification.DeleteNotification;
+
+public record DeleteNotificationCommandResponse;
