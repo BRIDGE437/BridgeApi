@@ -1,99 +1,70 @@
-# Bridge API - Advanced Startup & Investor Matching Platform
+# 🌉 BridgeApi: The AI-Powered Startup & Investor Ecosystem
+*(Yapay Zeka Destekli Girişimci ve Yatırımcı Sosyal Ağı)*
 
-(EN) Bridge API is a comprehensive ecosystem designed to connect startups and investors through social networking and AI-powered matching logic. It integrates a .NET-based social platform with a hybrid matching engine (Rule-based + AI-powered Semantic Search).
+## 🚀 Proje Nedir?
+BridgeApi, standart bir form/kayıt sitesi değildir. **Startupların, melek yatırımcıların ve fonların bir araya gelip hem LinkedIn tarzı sosyalleşebildiği hem de en son teknoloji yapay zeka (LLM & Vector DB) modelleriyle birbirleriyle saniyeler içinde "Eşleşebildiği" tam teşekküllü bir Profesyonel Sosyal Ağdır.**
 
-(TR) Bridge API, sosyal ağlar ve yapay zeka destekli eşleştirme mantığı aracılığıyla girişimleri ve yatırımcıları bir araya getirmek için tasarlanmış kapsamlı bir ekosistemdir. .NET tabanlı bir sosyal platformu, hibrit bir eşleştirme motoruyla (Kural tabanlı + AI destekli Semantik Arama) birleştirir.
-
----
-
-## 🚀 Key Features / Temel Özellikler
-
-- **AI-Powered Matching**: Uses `pgvector` and Sentence-Transformers for semantic similarity. / **AI Destekli Eşleştirme**: Semantik benzerlik için `pgvector` ve Sentence-Transformers kullanır.
-- **Unified Identity**: GUID-based authentication system shared across all microservices. / **Birleşik Kimlik**: Tüm mikroservisler arasında paylaşılan GUID tabanlı kimlik doğrulama sistemi.
-- **Hybrid Scoring**: Combines business rules (%60) with semantic AI analysis (%40). / **Hibrit Skorlama**: İş kurallarını (%60) semantik yapay zeka analiziyle (%40) birleştirir.
-- **Social Networking**: Post sharing, commenting, and professional connection requests. / **Sosyal Ağ**: Post paylaşımı, yorum yapma ve profesyonel bağlantı istekleri.
-- **B2B Synergy**: Measures synergy between startups for networking events. / **B2B Sinerji**: Etkinlikler için girişimler arası sinerjiyi ölçer.
+Sistem, dışarıdan topladığı binlerce ham girişimi (Şu anda içeride **1726 tekilleştirilmiş girişim** bulunmaktadır) kendi veritabanında temizler, indeksler ve kullanıcıları "Etkinlikler (Events)" çatısı altında buluşturarak doğru yatırımı/doğru ortağı saniyeler içinde karşınıza çıkarır.
 
 ---
 
-## 🏗️ Architecture / Mimari Yapı
+## 🌟 Ana Özellikler (Core Features)
 
-The project is built on a **Modular Monolith/Microservices** hybrid architecture:
-Proje, **Modüler Monolit/Mikroservis** hibrit mimarisi üzerine inşa edilmiştir:
+### 1. 🤝 Profesyonel Sosyal Ağ (The Social Layer)
+Sistem sadece yapay zekadan ibaret değildir. İçeride canlı bir ekosistem döner:
+- **Kişisel ve Kurumsal Profiller:** Kullanıcılar Avatar, Kapak Fotoğrafı, Bio (UserProfile) oluşturur; aynı zamanda "Yatırımcı" veya "Girişim" şapkalarını giyerler.
+- **Takip ve Bağlantı (Follow & Connection):** İnsanlar birbirine arkadaşlık/ağ isteği gönderebilir, ilgilendikleri şirketleri takip edebilir.
+- **Zaman Tüneli ve Gönderiler (Feed & Posts):** Platform üzerinde herkes yeni yatırım turu aradığını veya vizyonunu LinkedIn tarzı paylaşımlarla duyurabilir, beğeni/yorum yapabilir.
+- **DM ve Anlık Mesajlaşma:** Kullanıcılar eşleştikleri kişilerle anında iletişime geçebilir.
 
-1.  **BridgeApi.API** (.NET 8):
-    (EN) Central hub for user management and social features.
-    (TR) Kullanıcı yönetimi ve sosyal özellikler için merkezi merkez.
-2.  **MatchingApi** (.NET 8):
-    (EN) Specialized engine for calculating similarity scores and managing events.
-    (TR) Benzerlik skorlarını hesaplayan ve etkinlikleri yöneten özel motor.
-3.  **BridgeApi.Shared**:
-    (EN) Common library containing `StartupProfile`, `InvestorProfile`, and shared DTOs.
-    (TR) `StartupProfile`, `InvestorProfile` ve paylaşılan DTO'ları içeren ortak kütüphane.
-4.  **AI Microservice** (Python/FastAPI):
-    (EN) Handles vector embeddings, LLM reranking, and semantic search queries.
-    (TR) Vektör gömülmeleri, LLM reranking ve semantik arama sorgularını yönetir.
+### 2. 🧠 Yapay Zeka Eşleştirme Motoru (AI Matching Engine)
+Doğru yatırımcıyla doğru girişimi bulmak için tasarlanmış 3 aşamalı (Hybrid) mükemmeliyetçi bir sistemdir:
+- **Kural Tabanlı Ön Filtre (Rule-Based):** Sektör, Büyüme Aşaması ve Ülke/Şehir uyumuna göre adayları hızlıca daraltır.
+- **Anlamsal Vektör Analizi (pgvector):** Python AI servisi, cümleleri 384-boyutlu matematiksel dizilere çevirir. PostgreSQL üzerinden Kosinüs uzaklığı ile "Gizli Benzerlikleri" keşfeder.
+- **Gemini LLM (Reranker) Bonusu:** Sadece "kelimeler benziyor" diye değil, Google Gemini kullanılarak "Bu iki şirket ortak olmalı ÇÜNKÜ..." mantığıyla son bir Reranking (Yeniden sıralama) uygulanır ve %100 uyuşan adaylar sunulur.
 
----
+### 3. 🌐 B2B Sinerji Algoritması (Startup-to-Startup)
+Sadece Yatırımcı eşleşmesi değil, iki farklı girişimin birbirlerine teknoloji, tedarik zinciri veya müşteri tabanı açısından "Mükemmel Bir Ortak (Partner)" olup olamayacağını ölçen yepyeni bir "Networking" arama motoruna sahiptir.
 
-## 🛠️ Tech Stack / Teknoloji Yığını
+### 4. 📅 Olay Güdümlü Etkinlik Sistemi (Event-Driven Architecture)
+Eşleşmeler rastgele yapılmaz. Sistemde "Demo Day", "Q3 Pitching" veya "Fintech Networking" gibi **Etkinlikler (Events)** oluşturulur.
+- Girişimler ve Yatırımcılar bu etkinliklere JSON payload'larıyla kaydolur.
+- Arka planda 7/24 uyuyan **Background Workers**, etkinliğin saati geldiğinde uyanır, veritabanını kilitler (Status: Processing) ve o etkinlikteki herkesi arka planda (kullanıcıyı hiç bekletmeden) yüzlerce kez eşleştirir.
 
-- **Backend**: .NET 8 (C#), Entity Framework Core
-- **AI/ML**: Python 3.10, FastAPI, Sentence-Transformers (all-MiniLM-L6-v2)
-- **Database**: PostgreSQL with **pgvector** (Hosted on Neon DB)
-- **Security**: JWT Authentication, Identity Framework
-- **Infrastructure**: Asynchronous Background Workers (Worker Services)
-
----
-
-## 📂 Project Structure / Proje Yapısı
-
-```text
-BridgeApi/
-├── Core/
-│   └── BridgeApi.Shared/       # Shared Entities & DTOs
-├── Infrastructure/
-│   └── BridgeApi.Persistence/  # Central DbContext & Migrations
-├── Presentation/
-│   └── BridgeApi.API/          # Main Social Platform API
-├── backend/
-│   └── MatchingApi/            # Matching & AI Logic Hub
-└── ai_service/                 # Python FastAPI AI Microservice
-```
+### 5. 🛡️ Veri Temizleme ve Tekilleştirme (Deduplication)
+- İnternetten kazınan/eklenen binlerce veri, özel bir MD5 algoritması (`Website + CompanyName`) ile parmak izine dönüştürülür. Sisteme aynı şirket 2 kez asla giremez!
+- E-posta çakışmalarını önlemek için (Örn: Sentry teknik mailleri) arkaplanda e-postalar `+ID` eklenerek benzersiz hale getirilirken, orijinal veriler hiçbir zaman kaybedilmez.
 
 ---
 
-## ⚙️ Setup & Installation / Kurulum Notları
+## 🏗️ Kullanılan Teknolojiler (Tech Stack)
+BridgeApi, "Separation of Concerns" (Sorumlulukların Ayrılması) prensibiyle iki farklı sunucudan oluşan devasa bir mikroservis yapısıdır:
 
-### 1. Database / Veritabanı
-(EN) Ensure you have a PostgreSQL database with `pgvector` enabled.
-(TR) `pgvector` eklentisi etkinleştirilmiş bir PostgreSQL veritabanına sahip olduğunuzdan emin olun.
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
-```
-
-### 2. Configuration / Yapılandırma
-(EN) Set your connection strings and AI service URLs in `appsettings.json` or environment variables.
-(TR) Bağlantı dizelerini ve AI servis URL'lerini `appsettings.json` veya çevre değişkenlerinde ayarlayın.
-
-### 3. Run APIs / Çalıştırma
-```bash
-# Bridge API
-dotnet run --project Presentation/BridgeApi.API
-
-# Matching API
-dotnet run --project backend/MatchingApi
-
-# AI Service
-cd ai_service && uvicorn main:app --reload
-```
+- **Ana Backend (C# .NET Core 8):** Sosyal ağ işlemleri (Post, Follow, Auth) temiz ve modern **CQRS & MediatR** mimarisiyle işlenirken; eşleşme matematik kuralları **Services** katmanında hesaplanır.
+- **Yapay Zeka Sunucusu (Python FastAPI):** SentenceTransformers ve Google Gemini API kullanılarak ağır vektör/yapay zeka işlemleri yapılır.
+- **Veritabanı (Neon Serverless PostgreSQL):** `pgvector` eklentisi kullanılarak klasik veri (User, Post) ile matematiksel veri (Vektörler) tek bir bulut veritabanında olağanüstü hızlarda saklanır ve sorgulanır.
 
 ---
 
-## 📄 Documentation / Dokümantasyon
+## 📖 Dokümantasyon Rehberi (Neye Nereden Ulaşacaksınız?)
+Sistemin kaputunun altını merak eden geliştiriciler ve mimarlar için hazırladığımız **5 Ciltlik Master Teknik Şartname** `raporlar/` klasörünün içindedir:
 
-(EN) For detailed endpoint lists and system architecture, see the [raporlar](./raporlar/) directory.
-(TR) Detaylı endpoint listeleri ve sistem mimarisi için [raporlar](./raporlar/) dizinine bakın.
+📍 **[`raporlar/01_Database_and_Entity_Layer_Analysis.md`](./raporlar/01_Database_and_Entity_Layer_Analysis.md)**
+- Sistemde hangi veritabanı tabloları var?
+- `AppUser` sosyal ağı nasıl yönetiyor? Tekilleştirme (`ExternalFingerprint`) nasıl çalışıyor? Tüm kolonların açıklamaları burada.
 
-- [System Architecture / Sistem Mimarisi](./raporlar/BridgeApi_Tum_Sistem_Mimarisi.md)
-- [Integration Report / Entegrasyon Raporu](./raporlar/MatchingApi_Entegrasyon_Raporu.md)
+📍 **[`raporlar/02_Core_Business_Logic_and_Workers.md`](./raporlar/02_Core_Business_Logic_and_Workers.md)**
+- Kural tabanlı algoritmanın puan ağırlıkları (Weight) nelerdir? (Örn: Lokasyon %35, Sektör %40).
+- Arka planda 7/24 çalışan Etkinlik ve İndeksleme İşçileri (Workers) sistemi kilitlemeden nasıl çalışır?
+
+📍 **[`raporlar/03_API_Endpoints_and_Payloads.md`](./raporlar/03_API_Endpoints_and_Payloads.md)**
+- Bir Frontend veya Mobil geliştiricisi nereye istek atacak?
+- İstisnasız **TÜM API uçlarının** (Sosyal Ağ, AI Motoru, Eşleşme Etkinlikleri) JSON Request ve Response örneklerinin bulunduğu devasa Swagger sözlüğü.
+
+📍 **[`raporlar/04_AI_and_Mathematical_Engine.md`](./raporlar/04_AI_and_Mathematical_Engine.md)**
+- Python sunucumuzdaki matematik (Kosinüs Uzaklığı `<=>`) nasıl çalışıyor?
+- Google Gemini'ye "Bu iki şirket ortak olmalı" dedirten İngilizce **Prompt Engineering** formüllerimizin tam metinleri nerede?
+
+📍 **[`raporlar/05_Environment_and_Deployment_Architecture.md`](./raporlar/05_Environment_and_Deployment_Architecture.md)**
+- Sistem lokalde veya sunucuda nasıl ayağa kalkar?
+- `.env` ve `appsettings.json` dosyalarındaki değişkenler, Neon PostgreSQL Connection Pooling (Bağlantı Havuzu) mimarisi ve Rate-Limit (Token Tasarrufu) önlemlerinin detayları.
