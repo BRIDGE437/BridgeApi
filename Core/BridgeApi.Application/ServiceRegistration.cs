@@ -15,6 +15,7 @@ public static class ServiceRegistration
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehaviour<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(CachingBehaviour<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehaviour<,>));
+        services.AddScoped<BridgeApi.Application.Abstractions.ICsvImportService, BridgeApi.Application.Services.CsvImportService>();
         return services;
     }
 }

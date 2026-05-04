@@ -1,3 +1,4 @@
+using BridgeApi.Shared.Entities;
 using MatchingApi.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -50,13 +51,13 @@ public class EventMatchingWorker : BackgroundService
             {
                 // Fetch participants dynamically
                 var investors = await db.EventParticipations
-                    .Where(p => p.EventId == evt.Id && p.ParticipantType == "Investor")
+                    .Where(p => p.EventId == evt.Id && p.ParticipantType == "InvestorProfile")
                     .Select(p => p.ParticipantId)
                     .ToListAsync(stoppingToken);
 
                 var startups = await db.EventParticipations
-                    .Where(p => p.EventId == evt.Id && p.ParticipantType == "Startup")
-                    .Select(p => int.Parse(p.ParticipantId))
+                    .Where(p => p.EventId == evt.Id && p.ParticipantType == "StartupProfile")
+                    .Select(p => p.ParticipantId)
                     .ToListAsync(stoppingToken);
 
                 if (evt.EventType == "Networking")
@@ -64,8 +65,8 @@ public class EventMatchingWorker : BackgroundService
                     _logger.LogInformation("Event {EventId} is a Networking event. Starting B2B cross-matching...", evt.Id);
                     
                     // Fetch full startup objects for synergy rules
-                    var startupsList = await db.Startups
-                        .Where(s => startups.Contains(s.Id))
+                    var startupsList = await db.StartupProfiles
+                        .Where(s => startups.Contains(s.UserId))
                         .ToListAsync(stoppingToken);
 
                     foreach (var sourceSid in startups)

@@ -1,3 +1,4 @@
+using BridgeApi.Shared.Entities;
 using MatchingApi.Data;
 using MatchingApi.DTOs;
 using MatchingApi.Models;
@@ -42,7 +43,7 @@ public class MatchController : ControllerBase
 
     /// <summary>Index startups via JSON directly.</summary>
     [HttpPost("index-startups")]
-    public async Task<IActionResult> IndexStartups([FromBody] List<Startup> startups)
+    public async Task<IActionResult> IndexStartups([FromBody] List<StartupProfile> startups)
     {
         if (startups == null || !startups.Any())
             return BadRequest(new { error = "No startups provided." });
@@ -54,7 +55,7 @@ public class MatchController : ControllerBase
 
             foreach (var s in startups)
             {
-                var existing = await _db.Startups.FindAsync(s.Id);
+                var existing = await _db.StartupProfiles.FindAsync(s.UserId);
                 if (existing != null)
                 {
                     _db.Entry(existing).CurrentValues.SetValues(s);
@@ -62,7 +63,7 @@ public class MatchController : ControllerBase
                 }
                 else
                 {
-                    _db.Startups.Add(s);
+                    _db.StartupProfiles.Add(s);
                     addedCount++;
                 }
             }
@@ -136,9 +137,9 @@ public class MatchController : ControllerBase
             {
                 m.Id,
                 m.InvestorId,
-                InvestorName = m.Investor != null ? m.Investor.Name : "",
+                InvestorName = m.Investor != null ? m.Investor.CompanyName : "",
                 m.StartupId,
-                StartupName = m.Startup != null ? m.Startup.Name : "",
+                StartupName = m.Startup != null ? m.Startup.CompanyName : "",
                 m.MatchingMode,
                 m.TotalScore,
                 m.SectorScore,
@@ -167,19 +168,19 @@ public class MatchController : ControllerBase
             return BadRequest(new { error = "Event is no longer open for participation." });
 
         // Validate participant
-        if (participantType == "Investor")
+        if (participantType == "InvestorProfile")
         {
-            if (!await _db.Investors.AnyAsync(i => i.InvestorId == participantId))
-                return NotFound(new { error = "Investor not found" });
+            if (!await _db.InvestorProfiles.AnyAsync(i => i.UserId == participantId))
+                return NotFound(new { error = "InvestorProfile not found" });
         }
-        else if (participantType == "Startup")
+        else if (participantType == "StartupProfile")
         {
-            if (!int.TryParse(participantId, out int sid) || !await _db.Startups.AnyAsync(s => s.Id == sid))
-                return NotFound(new { error = "Startup not found" });
+            if (!await _db.StartupProfiles.AnyAsync(s => s.UserId == participantId))
+                return NotFound(new { error = "StartupProfile not found" });
         }
         else
         {
-            return BadRequest(new { error = "Invalid participant type. Must be Investor or Startup." });
+            return BadRequest(new { error = "Invalid participant type. Must be InvestorProfile or StartupProfile." });
         }
 
         var participation = new EventParticipation
@@ -225,38 +226,28 @@ public class MatchController : ControllerBase
     public async Task<ActionResult<MatchResponseDto>> MatchEventInvestor(string investorId, int eventId, int topN = 10)
     {
         var participantIds = await _db.EventParticipations
-            .Where(p => p.EventId == eventId && p.ParticipantType == "Startup")
+            .Where(p => p.EventId == eventId && p.ParticipantType == "StartupProfile")
             .Select(p => p.ParticipantId)
             .ToListAsync();
 
-        var startupIdsInt = participantIds
-            .Select(id => int.TryParse(id, out int sid) ? sid : 0)
-            .Where(id => id > 0)
-            .ToList();
-
-        if (!startupIdsInt.Any())
+        if (!participantIds.Any())
             return BadRequest(new { error = "No startups participating in this event" });
 
-        var results = await _aiEngine.MatchEventAsync(investorId, eventId, topN, startupIdsInt);
+        var results = await _aiEngine.MatchEventAsync(investorId, eventId, topN, participantIds);
         return Ok(results);
     }
 
     /// <summary>Run B2B synergy matching between startups in an event.</summary>
     [HttpPost("event/match-startup")]
-    public async Task<ActionResult<MatchResponseDto>> MatchEventStartup(int sourceStartupId, int eventId, int topN = 10)
+    public async Task<ActionResult<MatchResponseDto>> MatchEventStartup(string sourceStartupId, int eventId, int topN = 10)
     {
         var participantIds = await _db.EventParticipations
-            .Where(p => p.EventId == eventId && p.ParticipantType == "Startup" && p.ParticipantId != sourceStartupId.ToString())
+            .Where(p => p.EventId == eventId && p.ParticipantType == "StartupProfile" && p.ParticipantId != sourceStartupId.ToString())
             .Select(p => p.ParticipantId)
             .ToListAsync();
 
-        var participantIdsInt = participantIds
-            .Select(id => int.TryParse(id, out int sid) ? sid : 0)
-            .Where(id => id > 0)
-            .ToList();
-
-        var startups = await _db.Startups
-            .Where(s => participantIdsInt.Contains(s.Id))
+        var startups = await _db.StartupProfiles
+            .Where(s => participantIds.Contains(s.UserId))
             .ToListAsync();
 
         if (!startups.Any())
@@ -268,7 +259,7 @@ public class MatchController : ControllerBase
 
     /// <summary>Retrieves the B2B matching history for a specific startup.</summary>
     [HttpGet("history-b2b")]
-    public async Task<ActionResult> GetB2BHistory(int startupId, int? eventId = null, int topN = 50)
+    public async Task<ActionResult> GetB2BHistory(string startupId, int? eventId = null, int topN = 50)
     {
         var query = _db.StartupMatchResults.AsQueryable();
         query = query.Where(m => m.SourceStartupId == startupId);

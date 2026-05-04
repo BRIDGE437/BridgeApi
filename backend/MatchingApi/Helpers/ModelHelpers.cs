@@ -9,4 +9,13 @@ internal static class ModelHelpers
                     .Select(t => t.Trim())
                     .ToList();
     }
+
+    internal static (string City, string Country) ParseHq(string? hq)
+    {
+        if (string.IsNullOrWhiteSpace(hq)) return ("", "");
+        var parts = hq.Split('/', StringSplitOptions.TrimEntries);
+        return parts.Length >= 2
+            ? (parts[0].Trim(), parts[1].Trim())
+            : (parts[0].Trim(), "");
+    }
 }

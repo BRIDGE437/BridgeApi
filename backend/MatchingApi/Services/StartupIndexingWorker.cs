@@ -1,3 +1,4 @@
+using BridgeApi.Shared.Entities;
 using MatchingApi.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,16 +23,16 @@ public class StartupIndexingWorker : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // Run once immediately on startup
-        await ProcessMissingEmbeddingsAsync(stoppingToken);
+        await ProcessUnindexedStartupsAsync(stoppingToken);
 
         using var timer = new PeriodicTimer(_period);
         while (!stoppingToken.IsCancellationRequested && await timer.WaitForNextTickAsync(stoppingToken))
         {
-            await ProcessMissingEmbeddingsAsync(stoppingToken);
+            await ProcessUnindexedStartupsAsync(stoppingToken);
         }
     }
 
-    private async Task ProcessMissingEmbeddingsAsync(CancellationToken stoppingToken)
+    private async Task ProcessUnindexedStartupsAsync(CancellationToken stoppingToken)
     {
         try
         {
@@ -39,22 +40,23 @@ public class StartupIndexingWorker : BackgroundService
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var aiEngine = scope.ServiceProvider.GetRequiredService<AiMatchingService>();
 
-            // Find startups that haven't been vectorized yet
-            var pendingStartups = await db.Startups
-                .Where(s => s.Embedding == null)
+            // Find startups that are alive but missing embeddings
+            var unindexedStartups = await db.StartupProfiles
+                .Where(s => s.Embedding == null || s.EmbeddingHash == null)
+                .Take(50) // Process in small batches
                 .ToListAsync(stoppingToken);
 
-            if (!pendingStartups.Any())
+            if (!unindexedStartups.Any())
             {
                 _logger.LogInformation("No startups pending AI indexing.");
                 return;
             }
 
-            _logger.LogInformation("Found {Count} startups pending indexing. Sending to AI Service...", pendingStartups.Count);
+            _logger.LogInformation("Found {Count} startups pending indexing. Sending to AI Service...", unindexedStartups.Count);
             
-            await aiEngine.IndexStartupsAsync(pendingStartups);
+            await aiEngine.IndexStartupsAsync(unindexedStartups);
             
-            _logger.LogInformation("Successfully requested indexing for {Count} startups.", pendingStartups.Count);
+            _logger.LogInformation("Successfully requested indexing for {Count} startups.", unindexedStartups.Count);
         }
         catch (Exception ex)
         {

@@ -1,0 +1,6 @@
+﻿namespace BridgeApi.Shared;
+
+public class Class1
+{
+
+}

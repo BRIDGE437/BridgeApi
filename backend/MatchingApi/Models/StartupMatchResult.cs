@@ -17,14 +17,16 @@ public class StartupMatchResult
     public MatchEvent? Event { get; set; }
 
     // ── The startup that initiated the match (or the primary subject) ──
-    public int SourceStartupId { get; set; }
+    [Required, MaxLength(50)]
+    public string SourceStartupId { get; set; } = string.Empty;
     [ForeignKey(nameof(SourceStartupId))]
-    public Startup? SourceStartup { get; set; }
+    public BridgeApi.Shared.Entities.StartupProfile? SourceStartup { get; set; }
 
     // ── The candidate startup being evaluated ──
-    public int TargetStartupId { get; set; }
+    [Required, MaxLength(50)]
+    public string TargetStartupId { get; set; } = string.Empty;
     [ForeignKey(nameof(TargetStartupId))]
-    public Startup? TargetStartup { get; set; }
+    public BridgeApi.Shared.Entities.StartupProfile? TargetStartup { get; set; }
 
     public double TotalScore { get; set; }
     

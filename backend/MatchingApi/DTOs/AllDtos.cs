@@ -48,7 +48,7 @@ public record InvestorUpdateDto(
 
 public record MatchResultDto(
     int Rank,
-    int StartupId,
+    string StartupId,
     string StartupName,
     double Score,
     ScoreBreakdownDto Breakdown,
@@ -87,7 +87,7 @@ public record MatchMetadataDto(
 );
 
 public record StartupDto(
-    int Id,
+    string Id,
     string Name,
     string? Website,
     string? Status,
@@ -112,7 +112,7 @@ public record ImportResultDto(
 
 public record StartupSimilarityResultDto(
     int Rank,
-    int StartupId,
+    string StartupId,
     string StartupName,
     double Score,
     double SectorScore,
@@ -130,7 +130,7 @@ public record StartupSimilarityResultDto(
 );
 
 public record StartupSimilarityResponseDto(
-    int TargetStartupId,
+    string TargetStartupId,
     string TargetStartupName,
     int TotalCandidates,
     List<StartupSimilarityResultDto> Results,

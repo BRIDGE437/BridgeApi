@@ -82,8 +82,8 @@ class LlmReranker:
 
     async def rerank_by_ids(
         self,
-        source_id: int,
-        target_ids: list[int],
+        source_id: str,
+        target_ids: list[str],
         mode: str = "startup_startup",
     ) -> dict[int, dict[str, Any]]:
         """
@@ -97,7 +97,7 @@ class LlmReranker:
             # 1. Fetch Source
             source_row = await (await conn.execute(
                 'SELECT "Name", "Tags", "Description", "BusinessModel", "HQ" '
-                'FROM "Startups" WHERE "Id" = %s',
+                'FROM "StartupProfiles" WHERE "UserId" = %s',
                 (source_id,)
             )).fetchone()
             
@@ -108,8 +108,8 @@ class LlmReranker:
 
             # 2. Fetch Targets
             rows = await conn.execute(
-                'SELECT "Id", "Name", "Tags", "Description", "BusinessModel", "HQ" '
-                'FROM "Startups" WHERE "Id" = ANY(%s)',
+                'SELECT "UserId", "Name", "Tags", "Description", "BusinessModel", "HQ" '
+                'FROM "StartupProfiles" WHERE "UserId" = ANY(%s)',
                 (target_ids,)
             )
             

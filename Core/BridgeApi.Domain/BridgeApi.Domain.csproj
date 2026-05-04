@@ -8,6 +8,11 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Identity.Stores" Version="8.0.8" />
+    <PackageReference Include="Pgvector" Version="0.3.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BridgeApi.Shared\BridgeApi.Shared.csproj" />
   </ItemGroup>
 
 </Project>

@@ -14,7 +14,8 @@ public class LlmScoreCache
     [Required, MaxLength(32)]
     public string InvestorTextHash { get; set; } = string.Empty;
 
-    public int StartupId { get; set; }
+    [Required, MaxLength(50)]
+    public string StartupId { get; set; } = string.Empty;
 
     /// <summary>MD5 of the startup text at time of scoring.</summary>
     [Required, MaxLength(32)]

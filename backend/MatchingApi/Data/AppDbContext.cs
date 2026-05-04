@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MatchingApi.Models;
+using BridgeApi.Shared.Entities;
 
 namespace MatchingApi.Data;
 
@@ -7,8 +8,8 @@ public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-    public DbSet<Startup> Startups => Set<Startup>();
-    public DbSet<Investor> Investors => Set<Investor>();
+    public DbSet<StartupProfile> StartupProfiles => Set<StartupProfile>();
+    public DbSet<InvestorProfile> InvestorProfiles => Set<InvestorProfile>();
     public DbSet<MatchResult> MatchResults => Set<MatchResult>();
     public DbSet<StartupMatchResult> StartupMatchResults => Set<StartupMatchResult>();
     public DbSet<LlmScoreCache> LlmScoreCache => Set<LlmScoreCache>();
@@ -20,19 +21,17 @@ public class AppDbContext : DbContext
         // ── pgvector extension ──
         modelBuilder.HasPostgresExtension("vector");
 
-        // ── Startup ──
-        modelBuilder.Entity<Startup>(entity =>
+        // ── StartupProfile ──
+        modelBuilder.Entity<StartupProfile>(entity =>
         {
-            entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.Tags);
             entity.HasIndex(e => e.HQ);
             entity.Property(e => e.Embedding).HasColumnType("vector(384)");
         });
 
-        // ── Investor ──
-        modelBuilder.Entity<Investor>(entity =>
+        // ── InvestorProfile ──
+        modelBuilder.Entity<InvestorProfile>(entity =>
         {
-            entity.HasIndex(e => e.Active);
             entity.HasIndex(e => e.Type);
             entity.Property(e => e.Embedding).HasColumnType("vector(384)");
         });

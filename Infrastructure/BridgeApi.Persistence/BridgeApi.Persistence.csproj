@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Core\BridgeApi.Application\BridgeApi.Application.csproj" />
     <ProjectReference Include="..\..\Core\BridgeApi.Domain\BridgeApi.Domain.csproj" />
+    <ProjectReference Include="..\..\Core\BridgeApi.Shared\BridgeApi.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,6 +28,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.8" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.8" />
     <PackageReference Include="Bogus" Version="35.6.1" />
+    <PackageReference Include="Pgvector.EntityFrameworkCore" Version="0.2.0" />
   </ItemGroup>
 
 </Project>

@@ -1,3 +1,4 @@
+using BridgeApi.Shared.Entities;
 using MatchingApi.Data;
 using MatchingApi.DTOs;
 using MatchingApi.Helpers;
@@ -23,18 +24,18 @@ public class RuleBasedMatchingService
     {
         var sw = Stopwatch.StartNew();
 
-        var investor = await _db.Investors.FindAsync(investorId)
-            ?? throw new KeyNotFoundException($"Investor not found: {investorId}");
+        var investor = await _db.InvestorProfiles.FindAsync(investorId)
+            ?? throw new KeyNotFoundException($"InvestorProfile not found: {investorId}");
 
         var startups = await GetCandidateStartupsAsync(investor);
 
         _logger.LogInformation("Loaded {Count} alive startups for matching", startups.Count);
 
         // ── Cache investor parsed fields once — avoid re-parsing in the hot loop ──
-        var investorRegions = investor.ParsedRegions;
-        var investorCities  = investor.ParsedCities;
-        var investorSectors = investor.ParsedSectors;
-        var investorModels  = investor.ParsedBusinessModels;
+        var investorRegions = MatchingApi.Helpers.ModelHelpers.ParseCsv(investor.PreferredRegions);
+        var investorCities  = new List<string>(); // Cities removed from InvestorProfile
+        var investorSectors = MatchingApi.Helpers.ModelHelpers.ParseCsv(investor.PreferredSectors);
+        var investorModels  = MatchingApi.Helpers.ModelHelpers.ParseCsv(investor.PreferredBusinessModel);
 
         bool hasModelPref = investorModels.Count > 0;
 
@@ -44,26 +45,24 @@ public class RuleBasedMatchingService
         double maxGeo    = hasModelPref ? 35.0 : 45.0;
         double maxModel  = hasModelPref ? 25.0 : 0.0;
 
-        var scored = new List<(Startup Startup, double Total, double Sector, double Geo, double Model)>();
+        var scored = new List<(StartupProfile StartupProfile, double Total, double Sector, double Geo, double Model)>();
 
         foreach (var startup in startups)
         {
-            var (city, country) = startup.ParsedHQ;
+            var (city, country) = MatchingApi.Helpers.ModelHelpers.ParseHq(startup.HQ);
 
             // ── Hard filter: region check ──
             var region = RegionMapper.GetRegion(country);
             var hasRegionOverlap =
                 investorRegions.Any(r => r.Equals(country, StringComparison.OrdinalIgnoreCase)) ||
-                investorRegions.Any(r => r.Equals(region, StringComparison.OrdinalIgnoreCase)) ||
-                investorCities.Any(c => c.Equals(city, StringComparison.OrdinalIgnoreCase)) ||
-                HasNearbyCity(city, investorCities);
+                investorRegions.Any(r => r.Equals(region, StringComparison.OrdinalIgnoreCase));
 
             if (!hasRegionOverlap && investorRegions.Count > 0)
                 continue;
 
             // ── 1. Sector Score (similarity-aware) ──
             double sectorScore = SectorSimilarity.CalculateSectorScore(
-                startup.ParsedTags, investorSectors, maxSector);
+                MatchingApi.Helpers.ModelHelpers.ParseCsv(startup.Tags), investorSectors, maxSector);
 
             // ── 2. Geographic Score (proximity-aware) ──
             double geoScore = RegionMapper.CalculateGeoScore(
@@ -74,7 +73,7 @@ public class RuleBasedMatchingService
             if (hasModelPref)
             {
                 modelScore = CalculateBusinessModelScore(
-                    startup.ParsedBusinessModels, investorModels, maxModel);
+                    MatchingApi.Helpers.ModelHelpers.ParseCsv(startup.BusinessModel), investorModels, maxModel);
             }
 
             double total = sectorScore + geoScore + modelScore;
@@ -87,8 +86,8 @@ public class RuleBasedMatchingService
             .Take(topN)
             .Select((item, index) => new MatchResultDto(
                 Rank: index + 1,
-                StartupId: item.Startup.Id,
-                StartupName: item.Startup.Name,
+                StartupId: item.StartupProfile.UserId,
+                StartupName: item.StartupProfile.CompanyName ?? "",
                 Score: Math.Round(item.Total, 1),
                 Breakdown: new ScoreBreakdownDto(
                     SectorScore: Math.Round(item.Sector, 1),
@@ -100,12 +99,12 @@ public class RuleBasedMatchingService
                     LlmBonus: 0
                 ),
                 AiReason: null,
-                Tags: item.Startup.ParsedTags,
-                HQ: item.Startup.HQ,
-                BusinessModel: item.Startup.BusinessModel,
-                Description: item.Startup.Description,
-                RevenueState: item.Startup.RevenueState,
-                Website: item.Startup.Website
+                Tags: MatchingApi.Helpers.ModelHelpers.ParseCsv(item.StartupProfile.Tags),
+                HQ: item.StartupProfile.HQ,
+                BusinessModel: item.StartupProfile.BusinessModel,
+                Description: item.StartupProfile.Description,
+                RevenueState: item.StartupProfile.RevenueState,
+                Website: item.StartupProfile.WebsiteUrl
             ))
             .ToList();
 
@@ -114,7 +113,7 @@ public class RuleBasedMatchingService
 
         return new MatchResponseDto(
             InvestorId: investorId,
-            InvestorName: investor.Name,
+            InvestorName: investor.CompanyName,
             MatchingMode: "rule-based",
             TotalCandidates: scored.Count,
             Results: topResults,
@@ -132,17 +131,17 @@ public class RuleBasedMatchingService
     
     /// <summary>
     /// Calculates B2B synergy between a source startup and a list of participant startups.
-    /// Used for Startup-to-Startup networking events.
+    /// Used for StartupProfile-to-StartupProfile networking events.
     /// </summary>
-    public async Task<MatchResponseDto> MatchStartupsAsync(int sourceStartupId, List<Startup> participants, int topN = 10)
+    public async Task<MatchResponseDto> MatchStartupsAsync(string sourceStartupId, List<StartupProfile> participants, int topN = 10)
     {
         var sw = Stopwatch.StartNew();
 
-        var sourceStartup = await _db.Startups.FindAsync(sourceStartupId)
+        var sourceStartup = await _db.StartupProfiles.FindAsync(sourceStartupId)
             ?? throw new KeyNotFoundException($"Source startup not found: {sourceStartupId}");
 
-        var sourceTags = sourceStartup.ParsedTags;
-        var (sourceCity, sourceCountry) = sourceStartup.ParsedHQ;
+        var sourceTags = MatchingApi.Helpers.ModelHelpers.ParseCsv(sourceStartup.Tags);
+        var (sourceCity, sourceCountry) = MatchingApi.Helpers.ModelHelpers.ParseHq(sourceStartup.HQ);
         var sourceStage = sourceStartup.Stage ?? "";
 
         // B2B Synergy weights
@@ -150,17 +149,17 @@ public class RuleBasedMatchingService
         double maxGeo = 30.0;
         double maxStage = 30.0;
 
-        var scored = new List<(Startup Startup, double Total, double Sector, double Geo, double Stage)>();
+        var scored = new List<(StartupProfile StartupProfile, double Total, double Sector, double Geo, double Stage, double Model)>();
 
         foreach (var target in participants)
         {
-            if (target.Id == sourceStartupId) continue; // Skip self
+            if (target.UserId == sourceStartupId) continue; // Skip self
 
-            var (targetCity, targetCountry) = target.ParsedHQ;
+            var (targetCity, targetCountry) = MatchingApi.Helpers.ModelHelpers.ParseHq(target.HQ);
 
             // 1. Sector/Tags Synergy (Pass source tags as if they are investor preferences)
             double sectorScore = SectorSimilarity.CalculateSectorScore(
-                target.ParsedTags, sourceTags, maxSector);
+                MatchingApi.Helpers.ModelHelpers.ParseCsv(target.Tags), sourceTags, maxSector);
 
             // 2. Geo-Proximity
             double geoScore = 0;
@@ -175,7 +174,11 @@ public class RuleBasedMatchingService
 
             // 4. Business Model Synergy (Bonus points for complementary models)
             double modelScore = CalculateBusinessModelScore(
-                target.ParsedBusinessModels, sourceStartup.ParsedBusinessModels, 10.0);
+                MatchingApi.Helpers.ModelHelpers.ParseCsv(target.BusinessModel), 
+                MatchingApi.Helpers.ModelHelpers.ParseCsv(sourceStartup.BusinessModel), 10.0);
+
+            // Assuming stageScore was supposed to be 0 for now as it's not defined in the snippet above
+            double stageScore = 0; 
 
             double total = sectorScore + geoScore + stageScore + modelScore;
 
@@ -187,8 +190,8 @@ public class RuleBasedMatchingService
             .Take(topN)
             .Select((item, index) => new MatchResultDto(
                 Rank: index + 1,
-                StartupId: item.Startup.Id,
-                StartupName: item.Startup.Name,
+                StartupId: item.StartupProfile.UserId,
+                StartupName: item.StartupProfile.CompanyName ?? "",
                 Score: Math.Round(item.Total, 1),
                 Breakdown: new ScoreBreakdownDto(
                     SectorScore: Math.Round(item.Sector, 1),
@@ -200,12 +203,12 @@ public class RuleBasedMatchingService
                     LlmBonus: 0
                 ),
                 AiReason: null,
-                Tags: item.Startup.ParsedTags,
-                HQ: item.Startup.HQ,
-                BusinessModel: item.Startup.BusinessModel,
-                Description: item.Startup.Description,
-                RevenueState: item.Startup.RevenueState,
-                Website: item.Startup.Website
+                Tags: MatchingApi.Helpers.ModelHelpers.ParseCsv(item.StartupProfile.Tags),
+                HQ: item.StartupProfile.HQ,
+                BusinessModel: item.StartupProfile.BusinessModel,
+                Description: item.StartupProfile.Description,
+                RevenueState: item.StartupProfile.RevenueState,
+                Website: item.StartupProfile.WebsiteUrl
             ))
             .ToList();
 
@@ -213,7 +216,7 @@ public class RuleBasedMatchingService
 
         return new MatchResponseDto(
             InvestorId: sourceStartupId.ToString(), // Temporary mapping for the DTO
-            InvestorName: sourceStartup.Name,
+            InvestorName: sourceStartup.CompanyName ?? "",
             MatchingMode: "rule-based-startup",
             TotalCandidates: participants.Count,
             Results: topResults,
@@ -262,23 +265,22 @@ public class RuleBasedMatchingService
     /// Fetches alive startups, filtering HQ in the database when the investor
     /// has explicit region/city preferences. Reduces in-memory set before C# scoring.
     /// </summary>
-    private async Task<List<Startup>> GetCandidateStartupsAsync(Investor investor)
+    private async Task<List<StartupProfile>> GetCandidateStartupsAsync(InvestorProfile investor)
     {
-        var terms = investor.ParsedRegions
-            .Concat(investor.ParsedCities)
+        var terms = MatchingApi.Helpers.ModelHelpers.ParseCsv(investor.PreferredRegions)
             .Where(t => !string.IsNullOrWhiteSpace(t))
             .Select(t => t.Trim())
             .ToList();
 
         if (!terms.Any())
-            return await _db.Startups.Where(s => s.Status == "Alive").ToListAsync();
+            return await _db.StartupProfiles.ToListAsync();
 
         // Build: "HQ" ILIKE {0} OR "HQ" ILIKE {1} ...
         var conditions = terms.Select((_, i) => $@"""HQ"" ILIKE {{{i}}}");
-        var sql = $@"SELECT * FROM ""Startups"" WHERE ""Status"" = 'Alive' AND ({string.Join(" OR ", conditions)})";
+        var sql = $@"SELECT * FROM ""StartupProfiles"" WHERE ({string.Join(" OR ", conditions)})";
         var parameters = terms.Select(t => (object)$"%{t}%").ToArray();
 
-        return await _db.Startups.FromSqlRaw(sql, parameters).ToListAsync();
+        return await _db.StartupProfiles.FromSqlRaw(sql, parameters).ToListAsync();
     }
 
     // ── Persistence — upsert by (InvestorId, StartupId, MatchingMode) ──

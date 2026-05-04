@@ -109,7 +109,7 @@ app.add_middleware(
 
 
 class StartupInput(BaseModel):
-    id: int
+    id: str
     text: str
 
 
@@ -120,14 +120,14 @@ class SemanticMatchRequest(BaseModel):
     mode: str = "investor_startup"  # "investor_startup" | "startup_similarity"
 
 class StartupStartupMatchRequest(BaseModel):
-    source_startup_id: int
-    target_startup_ids: list[int]
+    source_startup_id: str
+    target_startup_ids: list[str]
     use_llm: bool = False
     mode: str = "startup_startup"
 
 
 class SemanticResultItem(BaseModel):
-    startup_id: int
+    startup_id: str
     similarity_score: float
     llm_score: float = 0.0
     reason: str | None = None
@@ -182,6 +182,7 @@ async def semantic_match(request: SemanticMatchRequest):
     Optionally applies LLM reranking on the top 20 results (with cache).
     """
     start = time.time()
+    logger.info(f"Incoming match request for investor. Candidates count: {len(request.startups)}")
 
     if not request.startups:
         raise HTTPException(status_code=400, detail="No startups provided")
@@ -194,8 +195,9 @@ async def semantic_match(request: SemanticMatchRequest):
     startup_texts = [s.text for s in request.startups]
 
     up_to_date_ids, missing_ids = await vector_store.get_embeddings_status(startup_ids, startup_texts)
- 
+    
     if missing_ids:
+        logger.info(f"Encoding {len(missing_ids)} missing startup embeddings...")
         missing_id_set = set(missing_ids)
         missing_startups = [s for s in request.startups if s.id in missing_id_set]
         new_embeddings = embedding_engine.encode_batch([s.text for s in missing_startups])
@@ -214,7 +216,6 @@ async def semantic_match(request: SemanticMatchRequest):
     # Step 4: Build results
     results: list[SemanticResultItem] = []
     for startup in request.startups:
-        # Fallback to 0.0 if not found in SQL results (though they should be there)
         sim_score = similarities_dict.get(startup.id, 0.0)
         results.append(
             SemanticResultItem(
@@ -223,8 +224,9 @@ async def semantic_match(request: SemanticMatchRequest):
             )
         )
 
-    # Step 6: Optional LLM reranking (top 20 only, with PostgreSQL cache)
+    # Step 6: Optional LLM reranking
     if request.use_llm:
+        logger.info("Applying LLM reranking...")
         try:
             top_20 = sorted(results, key=lambda r: r.similarity_score, reverse=True)[:20]
             top_20_ids = {r.startup_id for r in top_20}
@@ -241,9 +243,10 @@ async def semantic_match(request: SemanticMatchRequest):
                     result.reason = llm_scores[result.startup_id]["reason"]
 
         except Exception as e:
-            logger.warning(f"LLM reranking failed: {e}")
+            logger.error(f"LLM reranking failed: {e}")
 
     elapsed_ms = int((time.time() - start) * 1000)
+    logger.info(f"Match request completed in {elapsed_ms}ms")
 
     return SemanticMatchResponse(
         results=results,
@@ -253,27 +256,21 @@ async def semantic_match(request: SemanticMatchRequest):
 
 @app.post("/api/v1/semantic-match/startup-startup", response_model=SemanticMatchResponse)
 async def semantic_match_startup_startup(request: StartupStartupMatchRequest):
-    """
-    B2B Networking endpoint: match a source startup against multiple target startups.
-    Pulls the source embedding directly from PostgreSQL instead of encoding text.
-    """
     start = time.time()
+    logger.info(f"Incoming B2B match request for startup {request.source_startup_id}. Targets: {len(request.target_startup_ids)}")
 
     if not request.target_startup_ids:
         raise HTTPException(status_code=400, detail="No target startups provided")
 
-    # 1. Retrieve source startup embedding from PostgreSQL directly
     source_embedding = await vector_store.get_embedding(request.source_startup_id)
     if source_embedding is None:
         raise HTTPException(status_code=404, detail=f"Embedding for source startup {request.source_startup_id} not found")
 
-    # 2. Compute similarities directly in SQL
     similarities_dict = await vector_store.get_similarities_sql(
         source_embedding, 
         request.target_startup_ids
     )
 
-    # 3. Build results
     results: list[SemanticResultItem] = []
     for t_id in request.target_startup_ids:
         sim_score = similarities_dict.get(t_id, 0.0)
@@ -284,8 +281,8 @@ async def semantic_match_startup_startup(request: StartupStartupMatchRequest):
             )
         )
 
-    # 3. Optional LLM reranking (top 20 only)
     if request.use_llm:
+        logger.info("Applying B2B LLM reranking...")
         try:
             top_20 = sorted(results, key=lambda r: r.similarity_score, reverse=True)[:20]
             top_20_ids = [r.startup_id for r in top_20]
@@ -302,9 +299,10 @@ async def semantic_match_startup_startup(request: StartupStartupMatchRequest):
                     result.reason = llm_scores[result.startup_id]["reason"]
 
         except Exception as e:
-            logger.warning(f"LLM reranking failed for B2B: {e}")
+            logger.error(f"B2B LLM reranking failed: {e}")
 
     elapsed_ms = int((time.time() - start) * 1000)
+    logger.info(f"B2B match request completed in {elapsed_ms}ms")
 
     return SemanticMatchResponse(
         results=results,
@@ -320,6 +318,7 @@ async def index_startups(request: IndexStartupsRequest):
     Encodes and persists embeddings for all provided startups into PostgreSQL.
     """
     start = time.time()
+    logger.info(f"Indexing request for {len(request.startups)} startups...")
 
     if not request.startups:
         raise HTTPException(status_code=400, detail="No startups provided")
@@ -331,6 +330,7 @@ async def index_startups(request: IndexStartupsRequest):
     already_cached = len(up_to_date_ids)
 
     if missing_ids:
+        logger.info(f"Processing {len(missing_ids)} unindexed startups...")
         missing_id_set = set(missing_ids)
         missing_startups = [s for s in request.startups if s.id in missing_id_set]
         new_embeddings = embedding_engine.encode_batch([s.text for s in missing_startups])
@@ -341,6 +341,7 @@ async def index_startups(request: IndexStartupsRequest):
         )
 
     elapsed_ms = int((time.time() - start) * 1000)
+    logger.info(f"Indexing completed in {elapsed_ms}ms. New: {len(missing_ids)}, Cached: {already_cached}")
 
     return IndexStartupsResponse(
         indexed=len(missing_ids),
