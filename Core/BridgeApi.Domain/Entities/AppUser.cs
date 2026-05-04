@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using BridgeApi.Shared.Entities;
 
 namespace BridgeApi.Domain.Entities;
 
@@ -10,6 +11,10 @@ public class AppUser : IdentityUser<string>
     public string? ProviderKey { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+
+    // Professional Profiles (Linking to Shared)
+    public InvestorProfile? InvestorProfile { get; set; }
+    public StartupProfile? StartupProfile { get; set; }
 
     // Navigation Properties
     public UserProfile? UserProfile { get; set; }

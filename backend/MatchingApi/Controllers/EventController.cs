@@ -1,3 +1,4 @@
+using BridgeApi.Shared.Entities;
 using MatchingApi.Data;
 using MatchingApi.Models;
 using Microsoft.AspNetCore.Mvc;

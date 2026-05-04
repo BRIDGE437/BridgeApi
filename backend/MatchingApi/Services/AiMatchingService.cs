@@ -1,3 +1,4 @@
+using BridgeApi.Shared.Entities;
 using MatchingApi.Data;
 using MatchingApi.DTOs;
 using MatchingApi.Models;
@@ -37,8 +38,8 @@ public class AiMatchingService
     {
         var sw = Stopwatch.StartNew();
 
-        var investor = await _db.Investors.FindAsync(investorId)
-            ?? throw new KeyNotFoundException($"Investor not found: {investorId}");
+        var investor = await _db.InvestorProfiles.FindAsync(investorId)
+            ?? throw new KeyNotFoundException($"InvestorProfile not found: {investorId}");
 
         // ── Phase 1: Rule-based pre-filtering (top 50) ──
         var ruleResults = await _ruleEngine.MatchAsync(investorId, topN: 50);
@@ -111,7 +112,7 @@ public class AiMatchingService
 
         return new MatchResponseDto(
             InvestorId: investorId,
-            InvestorName: investor.Name,
+            InvestorName: investor.CompanyName ?? "",
             MatchingMode: "ai-powered",
             TotalCandidates: ruleResults.TotalCandidates,
             Results: finalResults,
@@ -126,12 +127,12 @@ public class AiMatchingService
     /// <summary>
     /// Event-based hybrid matching. Constrains candidates to event participants.
     /// </summary>
-    public async Task<MatchResponseDto> MatchEventAsync(string investorId, int eventId, int topN, List<int> startupIds)
+    public async Task<MatchResponseDto> MatchEventAsync(string investorId, int eventId, int topN, List<string> startupIds)
     {
         var sw = Stopwatch.StartNew();
 
-        var investor = await _db.Investors.FindAsync(investorId)
-            ?? throw new KeyNotFoundException($"Investor not found: {investorId}");
+        var investor = await _db.InvestorProfiles.FindAsync(investorId)
+            ?? throw new KeyNotFoundException($"InvestorProfile not found: {investorId}");
 
         // Fetch rule results and filter to only include participating startups
         var ruleResults = await _ruleEngine.MatchAsync(investorId, topN: Math.Max(100, startupIds.Count));
@@ -204,7 +205,7 @@ public class AiMatchingService
 
         return new MatchResponseDto(
             InvestorId: investorId,
-            InvestorName: investor.Name,
+            InvestorName: investor.CompanyName,
             MatchingMode: "ai-powered",
             TotalCandidates: candidateResults.Count,
             Results: finalResults,
@@ -217,20 +218,20 @@ public class AiMatchingService
     }
 
     /// <summary>
-    /// Event-based hybrid matching for Startup-to-Startup (B2B Networking).
+    /// Event-based hybrid matching for StartupProfile-to-StartupProfile (B2B Networking).
     /// </summary>
-    public async Task<MatchResponseDto> MatchStartupToStartupsAsync(int sourceStartupId, int eventId, int topN, List<Startup> participants)
+    public async Task<MatchResponseDto> MatchStartupToStartupsAsync(string sourceStartupId, int eventId, int topN, List<StartupProfile> participants)
     {
         var sw = Stopwatch.StartNew();
 
-        var sourceStartup = await _db.Startups.FindAsync(sourceStartupId)
+        var sourceStartup = await _db.StartupProfiles.FindAsync(sourceStartupId)
             ?? throw new KeyNotFoundException($"Source startup not found: {sourceStartupId}");
 
         // Fetch rule results
         var ruleResults = await _ruleEngine.MatchStartupsAsync(sourceStartupId, participants, topN: Math.Max(100, participants.Count));
         var candidateResults = ruleResults.Results;
 
-        _logger.LogInformation("Startup-to-startup candidates: {Count}", candidateResults.Count);
+        _logger.LogInformation("StartupProfile-to-startup candidates: {Count}", candidateResults.Count);
 
         var embeddingModel = "all-MiniLM-L6-v2";
         var llmUsed = false;
@@ -316,7 +317,7 @@ public class AiMatchingService
 
         return new MatchResponseDto(
             InvestorId: sourceStartupId.ToString(), // Mapping to interface
-            InvestorName: sourceStartup.Name,
+            InvestorName: sourceStartup.CompanyName ?? "",
             MatchingMode: "ai-powered-startup",
             TotalCandidates: candidateResults.Count,
             Results: finalResults,
@@ -332,14 +333,14 @@ public class AiMatchingService
     // AI SERVICE COMMUNICATION
     // ══════════════════════════════════════════════
 
-    public async Task IndexStartupsAsync(List<Startup> startups)
+    public async Task IndexStartupsAsync(List<StartupProfile> startups)
     {
         var request = new
         {
             startups = startups.Select(c => new
             {
-                id = c.Id,
-                text = $"{c.Name}. {c.Tags ?? ""}. " +
+                id = c.UserId,
+                text = $"{c.CompanyName}. {c.Tags ?? ""}. " +
                        $"{c.Description ?? ""}. {c.BusinessModel ?? ""}. {c.HQ ?? ""}"
             }).ToList()
         };
@@ -349,7 +350,7 @@ public class AiMatchingService
     }
 
     private async Task<List<SemanticResult>> GetSemanticScoresAsync(
-        Investor investor, List<MatchResultDto> candidates)
+        InvestorProfile investor, List<MatchResultDto> candidates)
     {
         var request = new
         {
@@ -376,11 +377,11 @@ public class AiMatchingService
         return result?.Results ?? new List<SemanticResult>();
     }
 
-    private static string BuildInvestorText(Investor investor)
+    private static string BuildInvestorText(InvestorProfile investor)
     {
         var parts = new List<string>
         {
-            investor.Name,
+            investor.CompanyName,
             $"Sectors: {investor.PreferredSectors}",
             $"Regions: {investor.PreferredRegions}",
             $"Stage: {investor.InvestmentStage}",
@@ -438,7 +439,7 @@ public class AiMatchingService
         await _db.SaveChangesAsync();
     }
 
-    private async Task PersistStartupResultsAsync(int sourceStartupId, List<MatchResultDto> results, int? eventId = null)
+    private async Task PersistStartupResultsAsync(string sourceStartupId, List<MatchResultDto> results, int? eventId = null)
     {
         var targetIds = results.Select(r => r.StartupId).ToList();
         var existing = await _db.StartupMatchResults
@@ -486,7 +487,7 @@ public class AiMatchingService
 public record SemanticMatchResponse(List<SemanticResult> Results, string Model);
 
 public record SemanticResult(
-    int StartupId,
+    string StartupId,
     double SimilarityScore,
     double LlmScore,
     string? Reason

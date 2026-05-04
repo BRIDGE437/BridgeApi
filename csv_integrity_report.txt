@@ -1,0 +1,10 @@
+--- CSV DATA INTEGRITY REPORT ---
+Total Rows: 2240
+Unique IDs: 1726
+Total Duplicate ID Rows: 1027
+
+--- CONFLICT ANALYSIS (Same ID but Different Data) ---
+Total Conflicting IDs: 1
+
+Top 5 Conflicts Example:
+ID 39934: Names=['Superead'], Websites=['https://superead.com/']

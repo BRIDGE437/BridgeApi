@@ -19,10 +19,69 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog((context, config) =>
     config.ReadFrom.Configuration(context.Configuration));
 
+// ── Load .env from root (Aggressive Discovery) ──
+string[] searchPaths = { builder.Environment.ContentRootPath, Directory.GetCurrentDirectory(), AppContext.BaseDirectory };
+bool envLoaded = false;
+
+foreach (var path in searchPaths)
+{
+    var dir = new DirectoryInfo(path);
+    while (dir != null && !envLoaded)
+    {
+        var potentialPath = Path.Combine(dir.FullName, ".env");
+        if (File.Exists(potentialPath))
+        {
+            foreach (var line in File.ReadAllLines(potentialPath))
+            {
+                var parts = line.Split('=', 2);
+                if (parts.Length != 2) continue;
+                var key = parts[0].Trim();
+                var value = parts[1].Trim().Trim('"').Trim('\'');
+                Environment.SetEnvironmentVariable(key, value);
+            }
+            envLoaded = true;
+            Console.WriteLine($"[CONFIG] .env loaded from: {potentialPath}");
+        }
+        dir = dir.Parent;
+    }
+}
+
 // Add services to the container.
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddPersistence(builder.Configuration);
+
+// Database Connection from Environment or Config
+var connectionString = Environment.GetEnvironmentVariable("PGVECTOR_DATABASE_URL") 
+                      ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+// ── Fix: Parse postgresql:// URI for Npgsql ──
+if (connectionString != null && (connectionString.StartsWith("postgres://") || connectionString.StartsWith("postgresql://")))
+{
+    try 
+    {
+        var uri = new Uri(connectionString);
+        var userInfo = uri.UserInfo.Split(':');
+        var user = userInfo[0];
+        var password = userInfo.Length > 1 ? userInfo[1] : "";
+        var host = uri.Host;
+        var port = uri.Port > 0 ? uri.Port : 5432;
+        var database = uri.AbsolutePath.TrimStart('/');
+
+        // Standard Npgsql format
+        connectionString = $"Host={host};Port={port};Database={database};Username={user};Password={password};SslMode=Require;Trust Server Certificate=true";
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[ERROR] Error parsing DB URI: {ex.Message}");
+    }
+}
+
+if (connectionString != null && connectionString.Contains("neon.tech"))
+    Console.WriteLine("[DB] Using Cloud Database (Neon)");
+else
+    Console.WriteLine("[DB] Using Local Database (127.0.0.1)");
+
+builder.Services.AddPersistence(builder.Configuration, connectionString);
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddStorage(builder.Configuration);

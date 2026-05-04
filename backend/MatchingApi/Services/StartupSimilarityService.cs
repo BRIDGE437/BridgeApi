@@ -1,3 +1,4 @@
+using BridgeApi.Shared.Entities;
 using MatchingApi.Data;
 using MatchingApi.DTOs;
 using MatchingApi.Helpers;
@@ -36,29 +37,29 @@ public class StartupSimilarityService
         _logger = logger;
     }
 
-    public async Task<StartupSimilarityResponseDto> FindSimilarAsync(int startupId, int topN = 10)
+    public async Task<StartupSimilarityResponseDto> FindSimilarAsync(string startupId, int topN = 10)
     {
         var sw = Stopwatch.StartNew();
 
-        var target = await _db.Startups.FindAsync(startupId)
-            ?? throw new KeyNotFoundException($"Startup not found: {startupId}");
+        var target = await _db.StartupProfiles.FindAsync(startupId)
+            ?? throw new KeyNotFoundException($"StartupProfile not found: {startupId}");
 
         var (candidates, semanticUsed) = await GetCandidatesAsync(target);
 
         _logger.LogInformation(
-            "Startup similarity: target={Id}, candidates={Count}, semantic={Sem}",
+            "StartupProfile similarity: target={Id}, candidates={Count}, semantic={Sem}",
             startupId, candidates.Count, semanticUsed);
 
         // Pre-parse target fields once — avoid re-parsing per candidate in the hot loop
-        var targetTags    = target.ParsedTags;
-        var targetModels  = target.ParsedBusinessModels;
-        var (targetCity, targetCountry) = target.ParsedHQ;
+        var targetTags    = MatchingApi.Helpers.ModelHelpers.ParseCsv(target.Tags);
+        var targetModels  = MatchingApi.Helpers.ModelHelpers.ParseCsv(target.BusinessModel);
+        var (targetCity, targetCountry) = MatchingApi.Helpers.ModelHelpers.ParseHq(target.HQ);
         var targetCities  = new List<string> { targetCity };
         var targetRegions = new List<string> { targetCountry, RegionMapper.GetRegion(targetCountry) };
 
         // Base scoring
         var scored = candidates
-            .Select(c => ScoreCandidate(c.Startup, c.SemanticScore, semanticUsed,
+            .Select(c => ScoreCandidate(c.StartupProfile, c.SemanticScore, semanticUsed,
                 targetTags, targetModels, targetCities, targetRegions))
             .OrderByDescending(r => r.Score)
             .Take(topN * 2) // take extra buffer before LLM
@@ -101,8 +102,8 @@ public class StartupSimilarityService
 
         sw.Stop();
         return new StartupSimilarityResponseDto(
-            TargetStartupId:   target.Id,
-            TargetStartupName: target.Name,
+            TargetStartupId:   target.UserId,
+            TargetStartupName: target.CompanyName ?? "",
             TotalCandidates:   candidates.Count,
             Results:           finalResults,
             ProcessingTimeMs:  sw.ElapsedMilliseconds,
@@ -113,13 +114,13 @@ public class StartupSimilarityService
 
     // ── Candidate retrieval ──────────────────────────────────────────────────
 
-    private async Task<(List<(Startup Startup, double SemanticScore)> Candidates, bool SemanticUsed)>
-        GetCandidatesAsync(Startup target)
+    private async Task<(List<(StartupProfile StartupProfile, double SemanticScore)> Candidates, bool SemanticUsed)>
+        GetCandidatesAsync(StartupProfile target)
     {
         if (target.Embedding != null)
         {
-            var rows = await _db.Startups
-                .Where(s => s.Id != target.Id && s.Status == "Alive" && s.Embedding != null)
+            var rows = await _db.StartupProfiles
+                .Where(s => s.UserId != target.UserId && true && s.Embedding != null)
                 .OrderBy(s => s.Embedding!.CosineDistance(target.Embedding))
                 .Take(200)
                 .ToListAsync();
@@ -127,7 +128,7 @@ public class StartupSimilarityService
             var targetVec = target.Embedding.ToArray();
             var candidates = rows
                 .Select(s => (
-                    Startup: s,
+                    StartupProfile: s,
                     SemanticScore: CosineSimilarity(targetVec, s.Embedding!.ToArray())
                 ))
                 .ToList();
@@ -135,9 +136,9 @@ public class StartupSimilarityService
             return (candidates, true);
         }
 
-        _logger.LogWarning("Target startup {Id} has no embedding; using rule-based only", target.Id);
-        var all = await _db.Startups
-            .Where(s => s.Id != target.Id && s.Status == "Alive")
+        _logger.LogWarning("Target startup {Id} has no embedding; using rule-based only", target.UserId);
+        var all = await _db.StartupProfiles
+            .Where(s => s.UserId != target.UserId && true)
             .ToListAsync();
 
         return (all.Select(s => (s, 0.0)).ToList(), false);
@@ -145,12 +146,12 @@ public class StartupSimilarityService
 
     // ── LLM scoring ──────────────────────────────────────────────────────────
 
-    private async Task<Dictionary<int, (double Score, string? Reason)>> GetLlmScoresAsync(
+    private async Task<Dictionary<string, (double Score, string? Reason)>> GetLlmScoresAsync(
         string targetText,
         List<StartupSimilarityResultDto> topCandidates,
-        List<(Startup Startup, double SemanticScore)> allCandidates)
+        List<(StartupProfile StartupProfile, double SemanticScore)> allCandidates)
     {
-        var candidateMap = allCandidates.ToDictionary(c => c.Startup.Id, c => c.Startup);
+        var candidateMap = allCandidates.ToDictionary(c => c.StartupProfile.UserId, c => c.StartupProfile);
 
         var request = new
         {
@@ -179,8 +180,8 @@ public class StartupSimilarityService
             .ToDictionary(r => r.StartupId, r => (r.LlmScore, r.Reason));
     }
 
-    private static string BuildStartupText(Startup s) =>
-        $"{s.Name}. {s.Tags ?? ""}. {s.Description ?? ""}. {s.BusinessModel ?? ""}. {s.HQ ?? ""}";
+    private static string BuildStartupText(StartupProfile s) =>
+        $"{s.CompanyName}. {s.Tags ?? ""}. {s.Description ?? ""}. {s.BusinessModel ?? ""}. {s.HQ ?? ""}";
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -200,19 +201,21 @@ public class StartupSimilarityService
     // ── Scoring ──────────────────────────────────────────────────────────────
 
     private static StartupSimilarityResultDto ScoreCandidate(
-        Startup candidate, double cosine, bool semanticUsed,
+        StartupProfile candidate, double cosine, bool semanticUsed,
         List<string> targetTags, List<string> targetModels,
         List<string> targetCities, List<string> targetRegions)
     {
+        var parsedTags = MatchingApi.Helpers.ModelHelpers.ParseCsv(candidate.Tags);
         double sectorScore = SectorSimilarity.CalculateSectorScore(
-            candidate.ParsedTags, targetTags, MaxSector);
+            parsedTags, targetTags, MaxSector);
 
-        var (cCity, cCountry) = candidate.ParsedHQ;
+        var (cCity, cCountry) = MatchingApi.Helpers.ModelHelpers.ParseHq(candidate.HQ);
         double geoScore = RegionMapper.CalculateGeoScore(
             cCity, cCountry, targetCities, targetRegions, MaxGeo);
 
+        var parsedModels = MatchingApi.Helpers.ModelHelpers.ParseCsv(candidate.BusinessModel);
         double modelScore = RuleBasedMatchingService.CalculateBusinessModelScore(
-            candidate.ParsedBusinessModels, targetModels, MaxModel);
+            parsedModels, targetModels, MaxModel);
 
         double semanticScore = semanticUsed
             ? Math.Round(Math.Max(0, cosine) * MaxSemantic, 1)
@@ -222,8 +225,8 @@ public class StartupSimilarityService
 
         return new StartupSimilarityResultDto(
             Rank:          0,
-            StartupId:     candidate.Id,
-            StartupName:   candidate.Name,
+            StartupId:     candidate.UserId,
+            StartupName:   candidate.CompanyName ?? "",
             Score:         total,
             SectorScore:   Math.Round(sectorScore, 1),
             GeoScore:      Math.Round(geoScore, 1),
@@ -231,12 +234,12 @@ public class StartupSimilarityService
             SemanticScore: semanticScore,
             LlmBonus:      0,
             AiReason:      null,
-            Tags:          candidate.ParsedTags,
+            Tags:          parsedTags,
             HQ:            candidate.HQ,
             BusinessModel: candidate.BusinessModel,
             Description:   candidate.Description,
             Stage:         candidate.Stage,
-            Website:       candidate.Website
+            Website:       candidate.WebsiteUrl
         );
     }
 }

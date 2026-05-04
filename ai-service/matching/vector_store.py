@@ -45,7 +45,7 @@ class VectorStore:
 
     async def get_embeddings_status(
         self,
-        startup_ids: list[int],
+        startup_ids: list[str],
         texts: list[str],
     ) -> tuple[list[int], list[int]]:
         """
@@ -67,8 +67,8 @@ class VectorStore:
                 # Step 2: Query the DB for the current status of these IDs.
                 # Notice we skip "Embedding" column here to keep the packet light.
                 rows = await conn.execute(
-                    'SELECT "Id", "EmbeddingHash" '
-                    'FROM "Startups" WHERE "Id" = ANY(%s)',
+                    'SELECT "UserId", "EmbeddingHash" '
+                    'FROM "StartupProfiles" WHERE "UserId" = ANY(%s)',
                     (startup_ids,),
                 )
                 # Map the database response for fast O(1) lookup
@@ -108,7 +108,7 @@ class VectorStore:
     async def get_similarities_sql(
         self,
         query_vector: np.ndarray,
-        startup_ids: list[int],
+        startup_ids: list[str],
     ) -> dict[int, float]:
         """
         Compute cosine similarity (1 - cosine distance) directly in PostgreSQL
@@ -125,8 +125,8 @@ class VectorStore:
                 await register_vector_async(conn)
                 # Cosine Similarity = 1 - Cosine Distance (<=> operator)
                 rows = await conn.execute(
-                    'SELECT "Id", (1 - ("Embedding" <=> %s)) AS similarity '
-                    'FROM "Startups" WHERE "Id" = ANY(%s) '
+                    'SELECT "UserId", (1 - ("Embedding" <=> %s)) AS similarity '
+                    'FROM "StartupProfiles" WHERE "UserId" = ANY(%s) '
                     'AND "Embedding" IS NOT NULL',
                     (query_vector.tolist(), startup_ids),
                 )
@@ -138,7 +138,7 @@ class VectorStore:
 
         return results
 
-    async def get_embedding(self, startup_id: int) -> np.ndarray | None:
+    async def get_embedding(self, startup_id: str) -> np.ndarray | None:
         """
         Retrieves the 384-dimensional embedding for a specific startup from PostgreSQL.
         Used for B2B Startup-to-Startup matching where the source is already indexed.
@@ -148,7 +148,7 @@ class VectorStore:
                 await register_vector_async(conn)
                 row = await (
                     await conn.execute(
-                        'SELECT "Embedding" FROM "Startups" WHERE "Id" = %s',
+                        'SELECT "Embedding" FROM "StartupProfiles" WHERE "UserId" = %s',
                         (startup_id,)
                     )
                 ).fetchone()
@@ -162,7 +162,7 @@ class VectorStore:
 
     async def upsert_embeddings(
         self,
-        startup_ids: list[int],
+        startup_ids: list[str],
         texts: list[str],
         embeddings: list[np.ndarray],
     ) -> None:
@@ -176,12 +176,13 @@ class VectorStore:
         try:
             async with self._pool.connection() as conn:
                 await register_vector_async(conn)
-                await conn.executemany(
-                    'UPDATE "Startups" SET "Embedding" = %s, "EmbeddingHash" = %s '
-                    'WHERE "Id" = %s',
-                    [(emb.tolist(), _md5(text), sid)
-                     for sid, text, emb in zip(startup_ids, texts, embeddings)],
-                )
+                async with conn.cursor() as cur:
+                    await cur.executemany(
+                        'UPDATE "StartupProfiles" SET "Embedding" = %s, "EmbeddingHash" = %s '
+                        'WHERE "UserId" = %s',
+                        [(emb.tolist(), _md5(text), sid)
+                         for sid, text, emb in zip(startup_ids, texts, embeddings)],
+                    )
             logger.debug("Upserted %d embeddings into PostgreSQL", len(startup_ids))
         except Exception as exc:
             logger.error("pgvector upsert failed: %s", exc)
@@ -202,7 +203,7 @@ class VectorStore:
             async with self._pool.connection() as conn:
                 row = await (
                     await conn.execute(
-                        'SELECT COUNT(*) FROM "Startups" WHERE "Embedding" IS NOT NULL'
+                        'SELECT COUNT(*) FROM "StartupProfiles" WHERE "Embedding" IS NOT NULL'
                     )
                 ).fetchone()
                 return int(row[0]) if row else 0

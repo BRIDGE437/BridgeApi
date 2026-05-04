@@ -1,19 +1,20 @@
 using BridgeApi.Domain.Entities;
+using BridgeApi.Shared.Entities;
+using BridgeApi.Application.Abstractions;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
 namespace BridgeApi.Persistence.Contexts;
 
-public class ApplicationDbContext : IdentityDbContext<AppUser, AppRole, string>
+public class ApplicationDbContext : IdentityDbContext<AppUser, AppRole, string>, IApplicationDbContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options) { }
 
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
-    public DbSet<FounderProfile> FounderProfiles => Set<FounderProfile>();
     public DbSet<InvestorProfile> InvestorProfiles => Set<InvestorProfile>();
-    public DbSet<TalentProfile> TalentProfiles => Set<TalentProfile>();
+    public DbSet<StartupProfile> StartupProfiles => Set<StartupProfile>();
     public DbSet<Intent> Intents => Set<Intent>();
     public DbSet<UserIntent> UserIntents => Set<UserIntent>();
     public DbSet<Connection> Connections => Set<Connection>();
@@ -29,6 +30,25 @@ public class ApplicationDbContext : IdentityDbContext<AppUser, AppRole, string>
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+        // Enable pgvector extension
+        modelBuilder.HasPostgresExtension("vector");
+
+        // 1-to-1 Relationship: AppUser <-> InvestorProfile
+        modelBuilder.Entity<InvestorProfile>()
+            .HasOne<AppUser>()
+            .WithOne(u => u.InvestorProfile)
+            .HasForeignKey<InvestorProfile>(ip => ip.UserId);
+
+        // 1-to-1 Relationship: AppUser <-> StartupProfile
+        modelBuilder.Entity<StartupProfile>(entity =>
+        {
+            entity.HasOne<AppUser>()
+                .WithOne(u => u.StartupProfile)
+                .HasForeignKey<StartupProfile>(sp => sp.UserId);
+
+            entity.HasIndex(s => s.ExternalFingerprint);
+        });
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

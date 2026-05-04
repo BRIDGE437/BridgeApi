@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using Pgvector;
 
 #nullable disable
 
@@ -20,6 +21,7 @@ namespace BridgeApi.Persistence.Migrations
                 .HasAnnotation("ProductVersion", "8.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "vector");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("BridgeApi.Domain.Entities.AppRole", b =>
@@ -773,6 +775,146 @@ namespace BridgeApi.Persistence.Migrations
                     b.ToTable("UserProfiles");
                 });
 
+            modelBuilder.Entity("BridgeApi.Shared.Entities.InvestorProfile", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CompanyName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Vector>("Embedding")
+                        .HasColumnType("vector(384)");
+
+                    b.Property<string>("EmbeddingHash")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("InvestmentStage")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Portfolio")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("PreferredBusinessModel")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("PreferredRegions")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("PreferredRevenueState")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("PreferredSectors")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<long>("TicketSizeMax")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TicketSizeMin")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("InvestorProfiles");
+                });
+
+            modelBuilder.Entity("BridgeApi.Shared.Entities.StartupProfile", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BusinessModel")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("CompanyName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ContactEmails")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)");
+
+                    b.Property<Vector>("Embedding")
+                        .HasColumnType("vector(384)");
+
+                    b.Property<string>("EmbeddingHash")
+                        .HasMaxLength(46)
+                        .HasColumnType("character varying(46)");
+
+                    b.Property<string>("ExternalFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("HQ")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("NeedsManualReview")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("RevenueModel")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("RevenueState")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Stage")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Tags")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<long>("TotalFunding")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("WebsiteDescription")
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)");
+
+                    b.Property<string>("WebsiteUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("ExternalFingerprint");
+
+                    b.ToTable("StartupProfiles");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.Property<int>("Id")
@@ -1086,6 +1228,24 @@ namespace BridgeApi.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("BridgeApi.Shared.Entities.InvestorProfile", b =>
+                {
+                    b.HasOne("BridgeApi.Domain.Entities.AppUser", null)
+                        .WithOne("InvestorProfile")
+                        .HasForeignKey("BridgeApi.Shared.Entities.InvestorProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("BridgeApi.Shared.Entities.StartupProfile", b =>
+                {
+                    b.HasOne("BridgeApi.Domain.Entities.AppUser", null)
+                        .WithOne("StartupProfile")
+                        .HasForeignKey("BridgeApi.Shared.Entities.StartupProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("BridgeApi.Domain.Entities.AppRole", null)
@@ -1143,6 +1303,8 @@ namespace BridgeApi.Persistence.Migrations
 
                     b.Navigation("Following");
 
+                    b.Navigation("InvestorProfile");
+
                     b.Navigation("Messages");
 
                     b.Navigation("Notifications");
@@ -1157,6 +1319,7 @@ namespace BridgeApi.Persistence.Migrations
 
                     b.Navigation("SentConnections");
 
+                    b.Navigation("StartupProfile");
                     b.Navigation("TriggeredNotifications");
 
                     b.Navigation("UserIntents");

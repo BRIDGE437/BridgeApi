@@ -1,0 +1,5 @@
+Unique IDs: 1726
+Unique Fingerprints: 1726
+Total Merged Entities: 0
+
+Example of merged IDs (Same business, different IDs):

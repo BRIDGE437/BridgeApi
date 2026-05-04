@@ -57,7 +57,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // ── Services ──
 builder.Services.AddScoped<RuleBasedMatchingService>();
 builder.Services.AddScoped<AiMatchingService>();
-builder.Services.AddScoped<CsvImportService>();
 builder.Services.AddScoped<StartupSimilarityService>();
 
 // ── Background Workers ──
@@ -109,4 +108,4 @@ app.UseSwaggerUI();
 app.UseCors("AllowFrontend");
 app.MapControllers();
 
-app.Run();
+app.Run("http://localhost:5002");

@@ -10,7 +10,8 @@ public class MatchResult
     [Required, MaxLength(50)]
     public string InvestorId { get; set; } = string.Empty;
 
-    public int StartupId { get; set; }
+    [Required, MaxLength(50)]
+    public string StartupId { get; set; } = string.Empty;
 
     /// <summary>rule-based | ai-powered</summary>
     [MaxLength(20)]
@@ -33,8 +34,8 @@ public class MatchResult
     public int? EventId { get; set; }
 
     // Navigation
-    public Startup? Startup { get; set; }
-    public Investor? Investor { get; set; }
+    public BridgeApi.Shared.Entities.StartupProfile? Startup { get; set; }
+    public BridgeApi.Shared.Entities.InvestorProfile? Investor { get; set; }
     
     [System.ComponentModel.DataAnnotations.Schema.ForeignKey(nameof(EventId))]
     public MatchEvent? Event { get; set; }

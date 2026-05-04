@@ -42,15 +42,26 @@ namespace BridgeApi.Persistence;
 
 public static class ServiceRegistration
 {
-    public static IServiceCollection AddPersistence(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddPersistence(this IServiceCollection services, IConfiguration configuration, string? connectionString = null)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+        connectionString ??= configuration.GetConnectionString("DefaultConnection");
+        
+        // Debug: Hangi adrese gidiyoruz?
+        if (connectionString != null)
+        {
+            var masked = connectionString.Contains("@") ? connectionString.Split('@')[1] : connectionString;
+            Console.WriteLine($"[DEBUG-PERSISTENCE] Target DB: {masked}");
+        }
+
+        if (string.IsNullOrEmpty(connectionString))
+            throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
         services.AddDbContext<ApplicationDbContext>(options =>
         {
-            options.UseNpgsql(connectionString);
+            options.UseNpgsql(connectionString, o => o.UseVector());
         });
+
+        services.AddScoped<BridgeApi.Application.Abstractions.IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
 
         services.AddIdentity<AppUserEntity, BridgeApi.Domain.Entities.AppRole>(options =>
         {
